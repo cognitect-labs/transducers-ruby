@@ -8,10 +8,10 @@ Gem::Specification.new do |spec|
   spec.version       = Transducers::VERSION
   spec.authors       = ["David Chelimsky"]
   spec.email         = ["dchelimsky@gmail.com"]
-  spec.summary       = %q{TODO: Write a short summary. Required.}
-  spec.description   = %q{TODO: Write a longer description. Optional.}
+  spec.summary       = %q{Transducers for Ruby}
+  spec.description   = %q{Transducers, an abstraction over reduction, for Ruby}
   spec.homepage      = ""
-  spec.license       = "MIT"
+#  spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
