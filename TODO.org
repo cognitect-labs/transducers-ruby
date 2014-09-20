@@ -1,0 +1,6 @@
+* implement the rest of the fns
+- cat, mapcat, remove, take, take-while, drop, drop-while, take-nth,
+  replace, into, partition-by, partition-all, keep, keep-indexed,
+  dedupe
+* reduced (may require transduce not being written in terms of reduce)
+* completion
