@@ -18,110 +18,145 @@ require 'benchmark'
 
 inc    = ->(n){n + 1}
 even   = ->(n){n.even?}
+small  = ->(n){n < 800}
 append = ->(a,i){a << i}
 mapping_inc    = Transducers.mapping(inc)
 filtering_even = Transducers.filtering(even)
 xform          = Transducers.compose(mapping_inc, filtering_even)
-a = 1.upto(1000)
+e = 1.upto(1000)
+a = e.to_a
 
 times = 100
 
 Benchmark.benchmark do |bm|
-  puts "select"
+  {"enum" => e, "array" => a}.each do |label, coll|
+    puts "select (#{label})"
 
-  3.times do
-    bm.report do
-      times.times do
-        a.select &even
+    3.times do
+      bm.report do
+        times.times do
+          coll.select &even
+        end
       end
     end
-  end
 
-  puts
+    puts
 
-  puts "filtering"
-  3.times do
-    bm.report do
-      times.times do
-        a.transduce(filtering_even, append, [])
+    puts "filtering (#{label})"
+    3.times do
+      bm.report do
+        times.times do
+          coll.transduce(filtering_even, append, [])
+        end
       end
     end
-  end
 
-  puts
+    puts
 
-  puts "map"
-  3.times do
-    bm.report do
-      times.times do
-        a.map &inc
+    puts "map (#{label})"
+    3.times do
+      bm.report do
+        times.times do
+          coll.map &inc
+        end
       end
     end
-  end
 
-  puts
+    puts
 
-  puts "mapping"
-  3.times do
-    bm.report do
-      times.times do
-        a.transduce(mapping_inc, append, [])
+    puts "mapping (#{label})"
+    3.times do
+      bm.report do
+        times.times do
+          coll.transduce(mapping_inc, append, [])
+        end
       end
     end
-  end
 
-  puts
+    puts
 
-  puts "map + select"
-  3.times do
-    bm.report do
-      times.times do
-        a.map(&inc).select(&even)
+    puts "map + select (#{label})"
+    3.times do
+      bm.report do
+        times.times do
+          coll.map(&inc).select(&even)
+        end
       end
     end
-  end
 
-  puts
+    puts
 
-  puts "mapping + filtering"
-  3.times do
-    bm.report do
-      times.times do
-        a.transduce(xform, append, [])
+    puts "mapping + filtering (#{label})"
+    3.times do
+      bm.report do
+        times.times do
+          coll.transduce(xform, append, [])
+        end
       end
     end
+
+    puts
   end
 end
 
 __END__
 
+select (enum)
+   0.010000   0.000000   0.010000 (  0.008059)
+   0.010000   0.000000   0.010000 (  0.008263)
+   0.010000   0.000000   0.010000 (  0.008287)
 
-select
-   0.010000   0.000000   0.010000 (  0.007921)
-   0.010000   0.000000   0.010000 (  0.007963)
-   0.000000   0.000000   0.000000 (  0.007914)
+filtering (enum)
+   0.020000   0.000000   0.020000 (  0.028182)
+   0.030000   0.000000   0.030000 (  0.027931)
+   0.030000   0.000000   0.030000 (  0.027978)
 
-filtering
-   0.030000   0.000000   0.030000 (  0.021641)
-   0.020000   0.000000   0.020000 (  0.025123)
-   0.020000   0.000000   0.020000 (  0.023591)
+map (enum)
+   0.010000   0.000000   0.010000 (  0.007463)
+   0.000000   0.000000   0.000000 (  0.007692)
+   0.010000   0.000000   0.010000 (  0.007714)
 
-map
-   0.010000   0.000000   0.010000 (  0.007441)
-   0.010000   0.000000   0.010000 (  0.008807)
-   0.010000   0.000000   0.010000 (  0.009467)
+mapping (enum)
+   0.030000   0.000000   0.030000 (  0.031837)
+   0.030000   0.000000   0.030000 (  0.032123)
+   0.040000   0.000000   0.040000 (  0.035496)
 
-mapping
-   0.020000   0.000000   0.020000 (  0.027268)
-   0.020000   0.000000   0.020000 (  0.028268)
-   0.030000   0.000000   0.030000 (  0.026570)
+map + select (enum)
+   0.010000   0.000000   0.010000 (  0.014277)
+   0.020000   0.000000   0.020000 (  0.014433)
+   0.010000   0.000000   0.010000 (  0.017674)
 
-map + select
-   0.020000   0.000000   0.020000 (  0.022019)
-   0.010000   0.000000   0.010000 (  0.014467)
-   0.020000   0.000000   0.020000 (  0.014687)
+mapping + filtering (enum)
+   0.050000   0.000000   0.050000 (  0.049372)
+   0.050000   0.000000   0.050000 (  0.050552)
+   0.050000   0.000000   0.050000 (  0.049580)
 
-mapping + filtering
-   0.050000   0.000000   0.050000 (  0.047115)
-   0.040000   0.000000   0.040000 (  0.047875)
-   0.050000   0.000000   0.050000 (  0.048241)
+select (array)
+   0.010000   0.000000   0.010000 (  0.006366)
+   0.010000   0.000000   0.010000 (  0.006525)
+   0.000000   0.000000   0.000000 (  0.006869)
+
+filtering (array)
+   0.030000   0.000000   0.030000 (  0.029771)
+   0.030000   0.000000   0.030000 (  0.027980)
+   0.030000   0.000000   0.030000 (  0.033978)
+
+map (array)
+   0.010000   0.000000   0.010000 (  0.005494)
+   0.000000   0.000000   0.000000 (  0.005546)
+   0.010000   0.000000   0.010000 (  0.005895)
+
+mapping (array)
+   0.030000   0.000000   0.030000 (  0.031703)
+   0.030000   0.000000   0.030000 (  0.031619)
+   0.040000   0.000000   0.040000 (  0.031852)
+
+map + select (array)
+   0.010000   0.000000   0.010000 (  0.011600)
+   0.010000   0.000000   0.010000 (  0.011653)
+   0.010000   0.000000   0.010000 (  0.012087)
+
+mapping + filtering (array)
+   0.060000   0.010000   0.070000 (  0.056059)
+   0.050000   0.000000   0.050000 (  0.050310)
+   0.050000   0.000000   0.050000 (  0.050120)
