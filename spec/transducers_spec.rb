@@ -23,11 +23,17 @@ RSpec.describe Transducers do
     expect(actual).to eq([2,4])
   end
 
+  it "creates a taking transducer" do
+    taking_3 = Transducers.taking(3)
+    actual = [1,2,3,4,5].transduce(taking_3, append, [])
+    expect(actual).to eq([1,2,3])
+  end
+
   it "composes transducers (or any fns, really)" do
-    mapping_inc = Transducers.mapping(inc)
-    filtering_evens = Transducers.filtering(even)
-    xform = Transducers.compose(mapping_inc, filtering_evens)
-    actual = [1,2,3,4,5].transduce(xform, append, [])
-    expect(actual).to eq([2,4,6])
+    transducer = Transducers.compose(Transducers.mapping(inc),
+                                     Transducers.filtering(even),
+                                     Transducers.taking(6))
+    actual = 1.upto(20).transduce(transducer, append, [])
+    expect(actual).to eq([2,4,6,8,10,12])
   end
 end
