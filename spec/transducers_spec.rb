@@ -1,39 +1,41 @@
 require 'spec_helper'
 
 RSpec.describe Transducers do
-  let(:inc)    { ->(n){n + 1} }
-  let(:even)   { ->(n){n.even?} }
-  let(:append) { ->(a,i){a << i} }
+  include Transducers
+
+  class Inc
+    def xform(n)
+      n + 1
+    end
+  end
 
   it "creates a mapping transducer" do
-    mapping_inc = Transducers.mapping(inc)
-    actual = [1,2,3].transduce(mapping_inc, append, [])
+    transducer = mapping(Inc.new)
+    actual = [1,2,3].transduce(transducer, :<<, [])
     expect(actual).to eq([2,3,4])
   end
 
   it "maps over an enumerator" do
-    mapping_inc = Transducers.mapping(inc)
-    actual = 1.upto(3).transduce(mapping_inc, append, [])
+    transducer = Transducers.mapping(Inc.new)
+    reducer = Reducers.wrap(:<<)
+    actual = 1.upto(3).transduce(transducer, reducer, [])
     expect(actual).to eq([2,3,4])
   end
 
+  example do
+    expect([1,2,3].transduce(Transducers.mapping(Inc.new), :+, 0)).to eq(9)
+  end
+
   it "creates a filtering transducer" do
-    filtering_evens = Transducers.filtering(even)
-    actual = [1,2,3,4,5].transduce(filtering_evens, append, [])
+    transducer = Transducers.filtering(:even?)
+    actual = [1,2,3,4,5].transduce(transducer, :<<, [])
     expect(actual).to eq([2,4])
   end
 
-  it "creates a taking transducer" do
-    taking_3 = Transducers.taking(3)
-    actual = [1,2,3,4,5].transduce(taking_3, append, [])
-    expect(actual).to eq([1,2,3])
-  end
-
   it "composes transducers (or any fns, really)" do
-    transducer = Transducers.compose(Transducers.mapping(inc),
-                                     Transducers.filtering(even),
-                                     Transducers.taking(6))
-    actual = 1.upto(20).transduce(transducer, append, [])
-    expect(actual).to eq([2,4,6,8,10,12])
+    transducer = Transducers.compose(Transducers.mapping(Inc.new),
+                                     Transducers.filtering(:even?))
+    actual = 1.upto(3).transduce(transducer, :<<, [])
+    expect(actual).to eq([2,4])
   end
 end
