@@ -3,7 +3,10 @@ require "transducers/version"
 module Transducible
   def transduce(transducer, reducer, result)
     r = transducer.reducer(Reducers.reducer(reducer))
-    each { |input| result = r.step(result, input) }
+    each do |input|
+      return result.val if Transducers::Reduced === result
+      result = r.step(result, input)
+    end
     result
   end
 end
@@ -33,6 +36,12 @@ module Reducers
 end
 
 module Transducers
+  class Reduced
+    attr_reader :val
+    def initialize(val)
+      @val = val
+    end
+  end
 
   class MappingTransducer
     class Factory
@@ -84,6 +93,37 @@ module Transducers
     FilteringTransducer::Factory.new(pred)
   end
 
+  class TakingTransducer
+    class Factory
+      def initialize(n)
+        @n = n
+      end
+
+      def reducer(reducer)
+        TakingTransducer.new(reducer, @n)
+      end
+    end
+
+    def initialize(reducer, n)
+      @reducer = reducer
+      @n = n
+    end
+
+    def step(result, input)
+      @n -= 1
+      if @n == -1
+        Reduced.new(result)
+      else
+        @reducer.step(result, input)
+      end
+
+    end
+  end
+
+  def taking(n)
+    TakingTransducer::Factory.new(n)
+  end
+
   class ComposedTransducer
     class Factory
       def initialize(*transducers)
@@ -100,5 +140,5 @@ module Transducers
     ComposedTransducer::Factory.new(*transducers)
   end
 
-  module_function :mapping, :filtering, :compose
+  module_function :mapping, :filtering, :taking, :compose
 end

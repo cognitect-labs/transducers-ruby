@@ -32,6 +32,20 @@ RSpec.describe Transducers do
     expect(actual).to eq([2,4])
   end
 
+  it "creates a taking transducer" do
+    transducer = Transducers.taking(5)
+    actual = 1.upto(20).transduce(transducer, :<<, [])
+    expect(actual).to eq([1,2,3,4,5])
+  end
+
+  example do
+    td = Transducers.compose(Transducers.taking(5),
+                             Transducers.mapping(Inc.new),
+                             Transducers.filtering(:even?))
+    expect((1..20).transduce(td, :+, 0)).to eq(12)
+
+  end
+
   it "composes transducers (or any fns, really)" do
     transducer = Transducers.compose(Transducers.mapping(Inc.new),
                                      Transducers.filtering(:even?))
