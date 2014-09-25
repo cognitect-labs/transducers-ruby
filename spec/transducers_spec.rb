@@ -7,8 +7,7 @@ RSpec.describe Transducers do
     inc = Class.new do
       def xform(n) n + 1 end
     end.new
-    transducer = mapping(inc)
-    actual = [1,2,3].transduce(transducer, :<<, [])
+    actual = [1,2,3].transduce(mapping(inc), :<<, [])
     expect(actual).to eq([2,3,4])
   end
 
