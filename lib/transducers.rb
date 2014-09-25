@@ -42,9 +42,19 @@ module Transducers
   end
 
   class MappingTransducer
+    class XForm
+      def initialize(block)
+        @block = block
+      end
+
+      def xform(input)
+        @block.call(input)
+      end
+    end
+
     class Factory
-      def initialize(xform)
-        @xform = xform
+      def initialize(xform, &block)
+        @xform = block ? XForm.new(block) : xform
       end
 
       def reducer(reducer)
@@ -62,8 +72,8 @@ module Transducers
     end
   end
 
-  def mapping(xform)
-    MappingTransducer::Factory.new(xform)
+  def mapping(xform=nil, &block)
+    MappingTransducer::Factory.new(xform, &block)
   end
 
   class FilteringTransducer
@@ -156,8 +166,8 @@ module Transducers
     CattingTransducer::Factory.new
   end
 
-  def mapcat(f)
-    compose(mapping(f), cat)
+  def mapcat(f=nil, &b)
+    compose(mapping(f, &b), cat)
   end
 
   class ComposedTransducer
