@@ -1,29 +1,15 @@
 require "transducers/version"
 
-module Enumerable
-  def transduce(transducer, reducer, result)
-    r = transducer.reducer(Reducers.reducer(reducer))
-    for i in 0...size
-      input = self[i]
-      result = r.step(result, input)
-    end
-    result
-  end
-end
-
-class Array
-  def transduce(transducer, reducer, result)
-    r = transducer.reducer(Reducers.reducer(reducer))
-    reduce(result) {|res,inp| r.step(res,inp)}
-  end
-end
-
-class Enumerator
+module Transducible
   def transduce(transducer, reducer, result)
     r = transducer.reducer(Reducers.reducer(reducer))
     each { |input| result = r.step(result, input) }
     result
   end
+end
+
+[Array, Enumerator, Range].each do |klass|
+  klass.send(:include, Transducible)
 end
 
 module Reducers
@@ -47,6 +33,7 @@ module Reducers
 end
 
 module Transducers
+
   class MappingTransducer
     class Factory
       def initialize(xform)
