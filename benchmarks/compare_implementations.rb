@@ -30,7 +30,7 @@ times = 100
 
 module WithEach
   def transduce(transducer, reducer, result)
-    r = transducer.reducer(Reducers.reducer(reducer))
+    r = transducer.reducer(Transducers.reducer(reducer))
     each { |input| result = r.step(result, input) }
     result
   end
@@ -38,14 +38,14 @@ end
 
 module WithReduce
   def transduce(transducer, reducer, result)
-    r = transducer.reducer(Reducers.reducer(reducer))
+    r = transducer.reducer(Transducers.reducer(reducer))
     reduce(result) {|res,inp| r.step(res,inp)}
   end
 end
 
 module WithIndexing
   def transduce(transducer, reducer, result)
-    r = transducer.reducer(Reducers.reducer(reducer))
+    r = transducer.reducer(Transducers.reducer(reducer))
     for i in 0...size
       input = self[i]
       result = r.step(result, input)

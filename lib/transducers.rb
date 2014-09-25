@@ -2,7 +2,7 @@ require "transducers/version"
 
 module Transducible
   def transduce(transducer, reducer, result)
-    r = transducer.reducer(Reducers.reducer(reducer))
+    r = transducer.reducer(Transducers.reducer(reducer))
     each do |input|
       return result.val if Transducers::Reduced === result
       result = r.step(result, input)
@@ -15,7 +15,7 @@ end
   klass.send(:include, Transducible)
 end
 
-module Reducers
+module Transducers
   class Wrapper
     def initialize(reducer)
       @reducer = reducer
@@ -33,9 +33,7 @@ module Reducers
   alias wrap reducer
 
   module_function :reducer, :wrap
-end
 
-module Transducers
   class Reduced
     attr_reader :val
     def initialize(val)
@@ -116,12 +114,46 @@ module Transducers
       else
         @reducer.step(result, input)
       end
-
     end
   end
 
   def taking(n)
     TakingTransducer::Factory.new(n)
+  end
+
+  class PreservingReduced
+    def reducer(reducer)
+      @reducer = reducer
+    end
+
+    def step(result, input)
+      ret = @reducer.step(result, input)
+      if Reduced === ret
+        Reduced.new(ret)
+      else
+        ret
+      end
+    end
+  end
+
+  class CattingTransducer
+    class Factory
+      def reducer(reducer)
+        CattingTransducer.new(reducer)
+      end
+    end
+
+    def initialize(reducer)
+      @reducer = reducer
+    end
+
+    def step(result, input)
+      rxf = input.transduce(PreservingReduced.new, @reducer, result)
+    end
+  end
+
+  def cat
+    CattingTransducer::Factory.new
   end
 
   class ComposedTransducer
@@ -140,5 +172,5 @@ module Transducers
     ComposedTransducer::Factory.new(*transducers)
   end
 
-  module_function :mapping, :filtering, :taking, :compose
+  module_function :mapping, :filtering, :taking, :cat, :compose
 end

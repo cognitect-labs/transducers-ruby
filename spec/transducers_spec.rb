@@ -17,7 +17,7 @@ RSpec.describe Transducers do
 
   it "maps over an enumerator" do
     transducer = Transducers.mapping(Inc.new)
-    reducer = Reducers.wrap(:<<)
+    reducer = Transducers.wrap(:<<)
     actual = 1.upto(3).transduce(transducer, reducer, [])
     expect(actual).to eq([2,3,4])
   end
@@ -38,12 +38,29 @@ RSpec.describe Transducers do
     expect(actual).to eq([1,2,3,4,5])
   end
 
+  it "creates a catting transducer" do
+    expect([[1,2],[3,4]].transduce(Transducers.cat, :<<, [])).to eq([1,2,3,4])
+  end
+
   example do
     td = Transducers.compose(Transducers.taking(5),
                              Transducers.mapping(Inc.new),
                              Transducers.filtering(:even?))
     expect((1..20).transduce(td, :+, 0)).to eq(12)
+  end
 
+  example do
+    sum = Class.new do
+      def xform(a)
+        [a.reduce(&:+)]
+      end
+    end.new
+
+    actual = [[1,2],[3,4]].transduce(Transducers.compose(Transducers.mapping(sum),
+                                                         Transducers.cat),
+                                     :<<,
+                                     [])
+    expect(actual).to eq([3,7])
   end
 
   it "composes transducers (or any fns, really)" do
