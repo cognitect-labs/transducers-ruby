@@ -156,6 +156,10 @@ module Transducers
     CattingTransducer::Factory.new
   end
 
+  def mapcat(f)
+    compose(mapping(f), cat)
+  end
+
   class ComposedTransducer
     class Factory
       def initialize(*transducers)
@@ -172,5 +176,5 @@ module Transducers
     ComposedTransducer::Factory.new(*transducers)
   end
 
-  module_function :mapping, :filtering, :taking, :cat, :compose
+  module_function :mapping, :filtering, :taking, :cat, :compose, :mapcat
 end

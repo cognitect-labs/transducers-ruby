@@ -63,6 +63,15 @@ RSpec.describe Transducers do
     expect(actual).to eq([3,7])
   end
 
+  example do
+    range_builder = Class.new do
+      def xform(n) 0...n; end
+    end.new
+
+    actual = [1,2,3].transduce(Transducers.mapcat(range_builder), :<<, [])
+    expect(actual).to eq([0,0,1,0,1,2])
+  end
+
   it "composes transducers (or any fns, really)" do
     transducer = Transducers.compose(Transducers.mapping(Inc.new),
                                      Transducers.filtering(:even?))
