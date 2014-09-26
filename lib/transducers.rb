@@ -1,38 +1,51 @@
 require "transducers/version"
 
-module Transducible
-  def transduce(transducer, reducer, result)
+module Transducers
+  def transduce(transducer, reducer, init_or_coll, coll=nil)
     r = transducer.reducer(Transducers.reducer(reducer))
-    each do |input|
+    result = coll ? init_or_coll : r.init
+    (coll || init_or_coll).each do |input|
       return result.val if Transducers::Reduced === result
       result = r.step(result, input)
     end
     result
   end
-end
 
-[Array, Enumerator, Range].each do |klass|
-  klass.send(:include, Transducible)
-end
+  module_function :transduce
 
-module Transducers
-  class Wrapper
-    def initialize(reducer)
-      @reducer = reducer
+  class Reducer
+    def initialize(sym, init=nil)
+      @sym = sym
+      @init = init
+    end
+
+    def init
+      @init
+    end
+
+    def result(result)
+      result
     end
 
     def step(result, input)
-      result.send(@reducer, input)
+      result.send(@sym, input)
     end
   end
 
+  INITIAL_VALUES = {
+    :<< => [],
+    :+  => 0
+  }
+
   def reducer(reducer)
-    Symbol === reducer ? Wrapper.new(reducer) : reducer
+    if Symbol === reducer
+      Reducer.new(reducer, INITIAL_VALUES[reducer])
+    else
+      reducer
+    end
   end
 
-  alias wrap reducer
-
-  module_function :reducer, :wrap
+  module_function :reducer
 
   class Reduced
     attr_reader :val
@@ -67,6 +80,14 @@ module Transducers
       @xform = xform
     end
 
+    def init()
+      @reducer.init()
+    end
+
+    def result(result)
+      @reducer.result(result)
+    end
+
     def step(result, input)
       @reducer.step(result, @xform.xform(input))
     end
@@ -92,6 +113,14 @@ module Transducers
       @pred = pred
     end
 
+    def init()
+      @reducer.init()
+    end
+
+    def result(result)
+      @reducer.result(result)
+    end
+
     def step(result, input)
       input.send(@pred) ? @reducer.step(result, input) : result
     end
@@ -115,6 +144,14 @@ module Transducers
     def initialize(reducer, n)
       @reducer = reducer
       @n = n
+    end
+
+    def init()
+      @reducer.init()
+    end
+
+    def result(result)
+      @reducer.result(result)
     end
 
     def step(result, input)
@@ -157,8 +194,16 @@ module Transducers
       @reducer = reducer
     end
 
+    def init()
+      @reducer.init()
+    end
+
+    def result(result)
+      @reducer.result(result)
+    end
+
     def step(result, input)
-      rxf = input.transduce(PreservingReduced.new, @reducer, result)
+      rxf = Transducers.transduce(PreservingReduced.new, @reducer, result, input)
     end
   end
 

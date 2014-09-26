@@ -28,6 +28,8 @@ a = e.to_a
 
 times = 100
 
+T = Transducers
+
 Benchmark.benchmark do |bm|
   {"enum" => e, "array" => a}.each do |label, coll|
     puts "select (#{label})"
@@ -44,7 +46,7 @@ Benchmark.benchmark do |bm|
     3.times do
       bm.report do
         times.times do
-          coll.transduce(filtering_even, :<<, [])
+          T.transduce(filtering_even, :<<, [], coll)
         end
       end
     end
@@ -64,7 +66,7 @@ Benchmark.benchmark do |bm|
     3.times do
       bm.report do
         times.times do
-          coll.transduce(mapping_inc, :<<, [])
+          T.transduce(mapping_inc, :<<, [], coll)
         end
       end
     end
@@ -86,7 +88,7 @@ Benchmark.benchmark do |bm|
     3.times do
       bm.report do
         times.times do
-          coll.transduce(map_inc_filter_even, :<<, [])
+          T.transduce(map_inc_filter_even, :<<, [], coll)
         end
       end
     end
