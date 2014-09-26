@@ -14,27 +14,35 @@ module Transducers
   module_function :transduce
 
   class Reducer
-    def initialize(sym, init=nil)
-      @sym = sym
-      @init = init
-    end
+    attr_reader :init
 
-    def init
-      @init
+    def initialize(sym_or_init, init=nil, &block)
+      @sym = init ? sym_or_init : nil
+      @init = init ? init : sym_or_init
+      @block = block
+      (class << self; self; end).class_eval do
+        if block
+          def step(result, input)
+            @block.call(result, input)
+          end
+        else
+          def step(result, input)
+            result.send(@sym, input)
+          end
+        end
+      end
     end
 
     def result(result)
       result
     end
-
-    def step(result, input)
-      result.send(@sym, input)
-    end
   end
 
   INITIAL_VALUES = {
     :<< => [],
-    :+  => 0
+    :+  => 0,
+    :-  => 0,
+    :*  => 1
   }
 
   def reducer(reducer)
