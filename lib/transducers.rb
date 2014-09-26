@@ -55,6 +55,25 @@ module Transducers
   end
 
   class MappingTransducer
+    class Reducer
+      def initialize(reducer, xform)
+        @reducer = reducer
+        @xform = xform
+      end
+
+      def init()
+        @reducer.init()
+      end
+
+      def result(result)
+        @reducer.result(result)
+      end
+
+      def step(result, input)
+        @reducer.step(result, @xform.xform(input))
+      end
+    end
+
     class XForm
       def initialize(block)
         @block = block
@@ -65,107 +84,87 @@ module Transducers
       end
     end
 
-    class Factory
-      def initialize(xform, &block)
-        @xform = block ? XForm.new(block) : xform
-      end
-
-      def reducer(reducer)
-        MappingTransducer.new(reducer, @xform)
-      end
+    def initialize(xform, &block)
+      @xform = block ? XForm.new(block) : xform
     end
 
-    def initialize(reducer, xform)
-      @reducer = reducer
-      @xform = xform
-    end
-
-    def init()
-      @reducer.init()
-    end
-
-    def result(result)
-      @reducer.result(result)
-    end
-
-    def step(result, input)
-      @reducer.step(result, @xform.xform(input))
+    def reducer(reducer)
+      Reducer.new(reducer, @xform)
     end
   end
 
   def mapping(xform=nil, &block)
-    MappingTransducer::Factory.new(xform, &block)
+    MappingTransducer.new(xform, &block)
   end
 
   class FilteringTransducer
-    class Factory
-      def initialize(pred)
+    class Reducer
+      def initialize(reducer, pred)
+        @reducer = reducer
         @pred = pred
       end
 
-      def reducer(reducer)
-        FilteringTransducer.new(reducer, @pred)
+      def init()
+        @reducer.init()
+      end
+
+      def result(result)
+        @reducer.result(result)
+      end
+
+      def step(result, input)
+        input.send(@pred) ? @reducer.step(result, input) : result
       end
     end
 
-    def initialize(reducer, pred)
-      @reducer = reducer
+    def initialize(pred)
       @pred = pred
     end
 
-    def init()
-      @reducer.init()
-    end
-
-    def result(result)
-      @reducer.result(result)
-    end
-
-    def step(result, input)
-      input.send(@pred) ? @reducer.step(result, input) : result
+    def reducer(reducer)
+      Reducer.new(reducer, @pred)
     end
   end
 
   def filtering(pred)
-    FilteringTransducer::Factory.new(pred)
+    FilteringTransducer.new(pred)
   end
 
   class TakingTransducer
-    class Factory
-      def initialize(n)
+    class Reducer
+      def initialize(reducer, n)
+        @reducer = reducer
         @n = n
       end
 
-      def reducer(reducer)
-        TakingTransducer.new(reducer, @n)
+      def init()
+        @reducer.init()
+      end
+
+      def result(result)
+        @reducer.result(result)
+      end
+
+      def step(result, input)
+        @n -= 1
+        if @n == -1
+          Reduced.new(result)
+        else
+          @reducer.step(result, input)
+        end
       end
     end
-
-    def initialize(reducer, n)
-      @reducer = reducer
+    def initialize(n)
       @n = n
     end
 
-    def init()
-      @reducer.init()
-    end
-
-    def result(result)
-      @reducer.result(result)
-    end
-
-    def step(result, input)
-      @n -= 1
-      if @n == -1
-        Reduced.new(result)
-      else
-        @reducer.step(result, input)
-      end
+    def reducer(reducer)
+      Reducer.new(reducer, @n)
     end
   end
 
   def taking(n)
-    TakingTransducer::Factory.new(n)
+    TakingTransducer.new(n)
   end
 
   class PreservingReduced
@@ -184,31 +183,31 @@ module Transducers
   end
 
   class CattingTransducer
-    class Factory
-      def reducer(reducer)
-        CattingTransducer.new(reducer)
+    class Reducer
+      def initialize(reducer)
+        @reducer = reducer
+      end
+
+      def init()
+        @reducer.init()
+      end
+
+      def result(result)
+        @reducer.result(result)
+      end
+
+      def step(result, input)
+        rxf = Transducers.transduce(PreservingReduced.new, @reducer, result, input)
       end
     end
 
-    def initialize(reducer)
-      @reducer = reducer
-    end
-
-    def init()
-      @reducer.init()
-    end
-
-    def result(result)
-      @reducer.result(result)
-    end
-
-    def step(result, input)
-      rxf = Transducers.transduce(PreservingReduced.new, @reducer, result, input)
+    def reducer(reducer)
+      Reducer.new(reducer)
     end
   end
 
   def cat
-    CattingTransducer::Factory.new
+    CattingTransducer.new
   end
 
   def mapcat(f=nil, &b)
@@ -216,19 +215,17 @@ module Transducers
   end
 
   class ComposedTransducer
-    class Factory
-      def initialize(*transducers)
-        @transducers = transducers
-      end
+    def initialize(*transducers)
+      @transducers = transducers
+    end
 
-      def reducer(reducer)
-        @transducers.reverse.reduce(reducer) {|r,t| t.reducer(r)}
-      end
+    def reducer(reducer)
+      @transducers.reverse.reduce(reducer) {|r,t| t.reducer(r)}
     end
   end
 
   def compose(*transducers)
-    ComposedTransducer::Factory.new(*transducers)
+    ComposedTransducer.new(*transducers)
   end
 
   module_function :mapping, :filtering, :taking, :cat, :compose, :mapcat
