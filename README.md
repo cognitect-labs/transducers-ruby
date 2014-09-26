@@ -115,6 +115,30 @@ result_so_far
 Note that there are no intermediate collections here! That's one
 benefit of transducers.
 
+Here's another example:
+
+```ruby
+(1..1_000_000).
+  select {|x| x.even?}.
+  map {|x| x * 2}.
+  take(10).
+  reduce {|s,i|s+i}
+
+# .. vs
+
+xform = compose(filtering(:even?),
+                mapping {|x| x * 2},
+                taking(10))
+
+transduce(xform, :+, 1..1_000_000)
+```
+
+Here the Ruby example generates 3 intermediate collections of 500k
+500k, and 10 values, respectively. The Transducers example generates
+no new collections, and stops iterating over the intial collection as soon
+as the taking transducer has seen 10 values. Obviously this is a win
+for both memory and processing cycle consumption.
+
 ### Transducible reducers
 
 Transducers require reducers with three different operations:
