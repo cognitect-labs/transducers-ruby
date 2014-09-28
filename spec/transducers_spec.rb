@@ -70,6 +70,14 @@ RSpec.describe Transducers do
     end
   end
 
+  it "transduces with a String" do
+    expect("THIS") do
+      transduce(mapping {|c| c.upcase},
+                Transducers::Reducer.new("") {|r,i| r << i},
+                "this")
+    end
+  end
+
   describe "composition" do
     example do
       expect([3,7]) do

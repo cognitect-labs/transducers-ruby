@@ -1,17 +1,26 @@
 require "transducers/version"
 
 module Transducers
-  def transduce(transducer, reducer, init_or_coll, coll=nil)
-    r = transducer.reducer(Transducers.reducer(reducer, init_or_coll))
-    result = coll ? init_or_coll : r.init
-    (coll || init_or_coll).each do |input|
+  def transduce(transducer, reducer, init=:init_not_supplied , coll)
+    r = transducer.reducer(Transducers.reducer(reducer, init))
+    result = (init == :init_not_supplied) ? r.init : init
+    return transduce_string(r, result, coll) if String === coll
+    coll.each do |input|
       return result.val if Transducers::Reduced === result
       result = r.step(result, input)
     end
     result
   end
 
-  module_function :transduce
+  def transduce_string(reducer, result, str)
+    str.each_char do |input|
+      return result.val if Transducers::Reduced === result
+      result = reducer.step(result, input)
+    end
+    result
+  end
+
+  module_function :transduce, :transduce_string
 
   class Reducer
     CACHE = {}
