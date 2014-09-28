@@ -62,19 +62,25 @@ module Transducers
     end
   end
 
+  class BaseReducer
+    def initialize(reducer)
+      @reducer = reducer
+    end
+
+    def init()
+      @reducer.init()
+    end
+
+    def result(result)
+      @reducer.result(result)
+    end
+  end
+
   class MappingTransducer
-    class Reducer
+    class Reducer < BaseReducer
       def initialize(reducer, xform)
-        @reducer = reducer
+        super(reducer)
         @xform = xform
-      end
-
-      def init()
-        @reducer.init()
-      end
-
-      def result(result)
-        @reducer.result(result)
       end
 
       def step(result, input)
@@ -106,18 +112,10 @@ module Transducers
   end
 
   class FilteringTransducer
-    class Reducer
+    class Reducer < BaseReducer
       def initialize(reducer, pred)
-        @reducer = reducer
+        super(reducer)
         @pred = pred
-      end
-
-      def init()
-        @reducer.init()
-      end
-
-      def result(result)
-        @reducer.result(result)
       end
 
       def step(result, input)
@@ -139,18 +137,10 @@ module Transducers
   end
 
   class TakingTransducer
-    class Reducer
+    class Reducer < BaseReducer
       def initialize(reducer, n)
-        @reducer = reducer
+        super(reducer)
         @n = n
-      end
-
-      def init()
-        @reducer.init()
-      end
-
-      def result(result)
-        @reducer.result(result)
       end
 
       def step(result, input)
@@ -162,6 +152,7 @@ module Transducers
         end
       end
     end
+
     def initialize(n)
       @n = n
     end
@@ -182,28 +173,12 @@ module Transducers
 
     def step(result, input)
       ret = @reducer.step(result, input)
-      if Reduced === ret
-        Reduced.new(ret)
-      else
-        ret
-      end
+      Reduced === ret ? Reduced.new(ret) : ret
     end
   end
 
   class CattingTransducer
-    class Reducer
-      def initialize(reducer)
-        @reducer = reducer
-      end
-
-      def init()
-        @reducer.init()
-      end
-
-      def result(result)
-        @reducer.result(result)
-      end
-
+    class Reducer < BaseReducer
       def step(result, input)
         rxf = Transducers.transduce(PreservingReduced.new, @reducer, result, input)
       end
