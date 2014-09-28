@@ -189,7 +189,7 @@ module Transducers
   class CattingTransducer
     class Reducer < BaseReducer
       def step(result, input)
-        rxf = Transducers.transduce(PreservingReduced.new, @reducer, result, input)
+        Transducers.transduce(PreservingReduced.new, @reducer, result, input)
       end
     end
 
