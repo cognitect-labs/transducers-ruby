@@ -3,13 +3,13 @@
 See http://clojure.org/transducers for background
 
 A transducer is a function or object that transforms a _reducer_: you
-hand it a reducer, and it gives you back a transformed reducer. To
-understand that, you first need to understand what a _reducer_ is.
+hand it a reducer, and it gives you back a transformed reducer.
 
 ### Reducers
 
-In Ruby, reducers, or reducing functions, are blocks
-that we pass to the reduce method, e.g.
+A reducing function accepts the result so far and the next input in a
+reducing operation. In Ruby, these are the blocks that we pass to the
+`reduce` (a.k.a. `inject`) method, e.g.
 
 ```ruby
 # sum
@@ -24,32 +24,50 @@ collection as input to the reducing function (the block passed to
 `reduce`), which is expected to return a new result that incorporates
 the input.
 
-We can accomplish the same task at each step of the iteration with a
-method that takes two args, an accumulated result (or initial value),
-and an input, and then returns a new accumulated result, e.g.
+For the purposes of transducers, a reducer is an object with three operations:
+
+* `init()` provides an initial value.
+* `result(result)` can optionally modify the result so far. In most
+  cases, it just returns it.
+* `step(result, input)` is the reducing operation.
+
+And a transducer is an object with a `reducer` method that accepts a
+reducer and returns a modified reducer e.g.
 
 ```ruby
-new_result = my_reducer.step(result_so_far, input)
+sum = Transducers::Reducer.new(0) {|result, input| result + input}
+mapping_inc = Transducers.mapping {|n| n + 1}
 ```
 
-And then we can implement our own `reduce` in terms of `each`, e.g.
+We can pass these two to the `transduce` method like this:
 
 ```ruby
-sum = Class.new do
-  def step(result, input)
-    result + input
-  end
-end.new
-
-def my_reduce(reducer, initial_value, collection)
-  result = initial_value
-  collection.each {|i| result = reducer.step(result,i)}
-  result
-end
+initial_value = 0
+coll = 1..100
+Transducers.transduce(mapping_inc, sum, initial_value, coll)
 ```
 
-Now what if we wanted to double each number before adding them up?
-Here's how we'd do that in Ruby:
+Internally, the transduce method passes `sum` to `mapping_inc`'s
+`reduce` method, generating a new reducer that, at each step,
+increments the next number in the input (`mapping_inc`) and then adds
+it to the result so far (`sum`), which is initialized with the 3rd
+argument to `transduce`, the initial value.
+
+`transduce` can also accept just 3 arguments:
+
+```ruby
+Transducers.transduce(mapping_inc, sum, 1..100)
+```
+
+In this case, since there is no initial value, transduce asks the
+reducer for the initial value by calling its `init` method. The `sum`
+reducer returns 0, which was the first argument to `Reducer.new`,
+above.
+
+### Why???
+
+Imagine we want to double every number in a collection and then
+calculate the sum. Here's one way we might do this in Ruby:
 
 ```ruby
 [1,2,3].
@@ -74,13 +92,11 @@ process with transducers:
 ```ruby
 transduce(
   compose(mapping {|n| n * 3},filtering(:even?)),
-  :+,
-  0,
+  Reducer.new(0) {|r,i|r+i},
   [1,2,3])
 ```
 
-Here, the _reducer_ is `:+`, which is applied at each step to the
-result so far and the input, e.g
+Here's what happens under the hood:
 
 ```ruby
 coll = [1,2,3]
@@ -92,6 +108,7 @@ input = 1
 xformed = input * 3
 if xformed.even? # which it is not
   result_so_far = result_so_far + xformed
+end
 result_so_far
 # => 0
 
@@ -100,6 +117,7 @@ input = 2
 xformed = input * 3
 if xformed.even? # which it is
   result_so_far = result_so_far + xformed
+end
 result_so_far
 # => 6
 
@@ -108,6 +126,7 @@ input = 3
 xformed = input * 3
 if xformed.even? # which it is not
   result_so_far = result_so_far + xformed
+end
 result_so_far
 # => 6
 ```
@@ -126,45 +145,15 @@ Here's another example:
 
 # .. vs
 
-xform = compose(filtering(:even?),
-                mapping {|x| x * 2},
-                taking(10))
-
-transduce(xform, :+, 1..1_000_000)
+transduce(compose(filtering(:even?),
+                  mapping {|x| x * 2},
+                  taking(10)),
+          Transducers::Reducer.new(0) {|r,i|r+i},
+          1..1_000_000)
 ```
 
-Here the Ruby example generates 3 intermediate collections of 500k
-500k, and 10 values, respectively. The Transducers example generates
-no new collections, and stops iterating over the intial collection as soon
-as the taking transducer has seen 10 values. Obviously this is a win
-for both memory and processing cycle consumption.
-
-### Transducible reducers
-
-Transducers require reducers with three different operations:
-
-* `init()` provides an initial value
-* `result(result)` can optionally modify the result so far. In most
-  cases, it just returns it
-* `step(result, input)` incorporates the input into the result so far
-  and returns the result so far.
-
-Consider, for example, the reducer that we'd use to sum a collection
-of numbers:
-
-```ruby
-[1,2,3].reduce {|result, input| result + input}
-```
-
-To build that into a transducible reducer, we need to provide it an
-initial value.
-
-```ruby
-sum = Reducer.new(0) {|r,i|r+i}
-sum.init
-# => 0
-sum.result(5)
-# => 5
-sum.step(5,3)
-# => 8
-```
+Here the chained iterator example generates 3 intermediate collections
+of 500k 500k, and 10 values, respectively. The Transducers example
+generates no new collections, and stops iterating over the intial
+collection as soon as the taking transducer has seen 10 values; a
+clear win for both memory and processing cycle consumption.
