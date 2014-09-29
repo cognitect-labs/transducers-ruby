@@ -2,7 +2,7 @@ require "transducers/version"
 
 module Transducers
   def transduce(transducer, reducer, init=:init_not_supplied , coll)
-    r = transducer.reducer(Transducers.reducer(init, reducer))
+    r = transducer.apply(Transducers.reducer(init, reducer))
     result = (init == :init_not_supplied) ? r.init : init
     return transduce_string(r, result, coll) if String === coll
     coll.each do |input|
@@ -109,7 +109,7 @@ module Transducers
       @xform = block ? XForm.new(block) : xform
     end
 
-    def reducer(reducer)
+    def apply(reducer)
       Reducer.new(reducer, @xform)
     end
   end
@@ -134,7 +134,7 @@ module Transducers
       @pred = pred
     end
 
-    def reducer(reducer)
+   def apply(reducer)
       Reducer.new(reducer, @pred)
     end
   end
@@ -164,7 +164,7 @@ module Transducers
       @n = n
     end
 
-    def reducer(reducer)
+    def apply(reducer)
       Reducer.new(reducer, @n)
     end
   end
@@ -174,7 +174,7 @@ module Transducers
   end
 
   class PreservingReduced
-    def reducer(reducer)
+    def apply(reducer)
       @reducer = reducer
     end
 
@@ -191,7 +191,7 @@ module Transducers
       end
     end
 
-    def reducer(reducer)
+    def apply(reducer)
       Reducer.new(reducer)
     end
   end
@@ -209,9 +209,10 @@ module Transducers
       @transducers = transducers
     end
 
-    def reducer(reducer)
-      @transducers.reverse.reduce(reducer) {|r,t| t.reducer(r)}
+    def apply(reducer)
+      @transducers.reverse.reduce(reducer) {|r,t| t.apply(r)}
     end
+
   end
 
   def compose(*transducers)
