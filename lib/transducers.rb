@@ -2,7 +2,7 @@ require "transducers/version"
 
 module Transducers
   def transduce(transducer, reducer, init=:init_not_supplied , coll)
-    r = transducer.reducer(Transducers.reducer(reducer, init))
+    r = transducer.reducer(Transducers.reducer(init, reducer))
     result = (init == :init_not_supplied) ? r.init : init
     return transduce_string(r, result, coll) if String === coll
     coll.each do |input|
@@ -23,14 +23,15 @@ module Transducers
   module_function :transduce, :transduce_string
 
   class Reducer
-    CACHE = {}
+    CACHE = Hash.new {|k,v| k[v] = {}}
+
     attr_reader :init
 
-    def initialize(sym_or_init, init=nil, &block)
-      @sym = init ? sym_or_init : nil
-      @init = init ? init : sym_or_init
+    def initialize(init, sym=:no_sym, &block)
+      @init = init
+      @sym = sym
       @block = block
-      CACHE[@sym] = self if Symbol === @sym
+      CACHE[init][sym] = self unless sym == :no_sym
       (class << self; self; end).class_eval do
         if block
           def step(result, input)
@@ -49,17 +50,14 @@ module Transducers
     end
   end
 
-  {
-    :<< => [],
-    :+  => 0,
-    :-  => 0,
-    :*  => 1
-  }.each {|k,v| Reducer.new(k,v)}
-
-  def reducer(reducer_or_init, init=nil, &block)
-    return reducer_or_init if reducer_or_init.respond_to?(:step)
-    Reducer::CACHE[reducer_or_init] ||
-      (Symbol === reducer_or_init ? Reducer.new(reducer_or_init, init, &block) : reducer_or_init)
+  def reducer(init, sym_or_reducer=nil, &block)
+    if found = Reducer::CACHE[init][sym_or_reducer]
+      found
+    elsif sym_or_reducer.respond_to?(:step)
+      sym_or_reducer
+    else
+      Reducer.new(init, sym_or_reducer, &block)
+    end
   end
 
   module_function :reducer

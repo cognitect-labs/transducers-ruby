@@ -24,18 +24,6 @@ RSpec.describe Transducers do
     end
   end
 
-  it "inits an Array for :<<" do
-    expect([2,3,4]) do
-      transduce(mapping {|n| n + 1}, :<<, [1,2,3])
-    end
-  end
-
-  it "inits 0 for :+" do
-    expect(9) do
-      transduce(mapping {|n| n + 1}, :+, [1,2,3])
-    end
-  end
-
   it "creates a filtering transducer" do
     expect([2,4]) do
       transduce(filtering(:even?), :<<, [], [1,2,3,4,5])
