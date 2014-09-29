@@ -33,15 +33,12 @@ module Transducers
   class Reducer
     include Reducing
 
-    CACHE = Hash.new {|k,v| k[v] = {}}
-
     attr_reader :init
 
     def initialize(init, sym=:no_sym, &block)
       @init = init
       @sym = sym
       @block = block
-      CACHE[init][sym] = self unless sym == :no_sym
       (class << self; self; end).class_eval do
         if block
           def step(result, input)
@@ -61,9 +58,7 @@ module Transducers
   end
 
   def reducer(init, sym_or_reducer=nil, &block)
-    if found = Reducer::CACHE[init][sym_or_reducer]
-      found
-    elsif sym_or_reducer.respond_to?(:step)
+    if sym_or_reducer.respond_to?(:step)
       sym_or_reducer
     else
       Reducer.new(init, sym_or_reducer, &block)
