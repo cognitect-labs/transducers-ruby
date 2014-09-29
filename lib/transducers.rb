@@ -1,38 +1,28 @@
 require "transducers/version"
 
 module Transducers
-  def transduce(transducer, reducer, init=nil , coll)
-    transducer.
-      apply(Transducers.reducer(init, reducer)).
-      reduce(coll)
+  def transduce(transducer, reducer, init=:init_not_supplied , coll)
+    r = transducer.apply(Transducers.reducer(init, reducer))
+    result = (init == :init_not_supplied) ? r.init : init
+    return transduce_string(r, result, coll) if String === coll
+    coll.each do |input|
+      return result.val if Transducers::Reduced === result
+      result = r.step(result, input)
+    end
+    result
   end
 
-  module_function :transduce
-
-  module Reducing
-    def reduce(inputs)
-      return reduce_string(inputs) if String === inputs
-      result = init
-      inputs.each do |input|
-        return result.val if Transducers::Reduced === result
-        result = step(result, input)
-      end
-      result
+  def transduce_string(reducer, result, str)
+    str.each_char do |input|
+      return result.val if Transducers::Reduced === result
+      result = reducer.step(result, input)
     end
-
-    def reduce_string(str)
-      result = init
-      str.each_char do |input|
-        return result.val if Transducers::Reduced === result
-        result = step(result, input)
-      end
-      result
-    end
+    result
   end
+
+  module_function :transduce, :transduce_string
 
   class Reducer
-    include Reducing
-
     attr_reader :init
 
     def initialize(init, sym=:no_sym, &block)
@@ -75,8 +65,6 @@ module Transducers
   end
 
   class BaseReducer
-    include Reducing
-
     def initialize(reducer)
       @reducer = reducer
     end
@@ -90,20 +78,8 @@ module Transducers
     end
   end
 
-  class BaseTransducer
-    def normalize_reducer(reducer_or_init, sym=nil)
-      sym ? Transducers.reducer(reducer_or_init, sym) : reducer_or_init
-    end
-
-    def apply(reducer_or_init, sym=nil)
-      reducer = sym ? Transducers.reducer(reducer_or_init, sym) : reducer_or_init
-      wrap(reducer)
-    end
-
-  end
-
-  class MappingTransducer < BaseTransducer
-    class MappingReducer < BaseReducer
+  class MappingTransducer
+    class Reducer < BaseReducer
       def initialize(reducer, xform)
         super(reducer)
         @xform = xform
@@ -128,8 +104,8 @@ module Transducers
       @xform = block ? XForm.new(block) : xform
     end
 
-    def wrap(reducer)
-      MappingReducer.new(reducer, @xform)
+    def apply(reducer)
+      Reducer.new(reducer, @xform)
     end
   end
 
@@ -137,8 +113,8 @@ module Transducers
     MappingTransducer.new(xform, &block)
   end
 
-  class FilteringTransducer < BaseTransducer
-    class FilteringReducer < BaseReducer
+  class FilteringTransducer
+    class Reducer < BaseReducer
       def initialize(reducer, pred)
         super(reducer)
         @pred = pred
@@ -153,8 +129,8 @@ module Transducers
       @pred = pred
     end
 
-    def wrap(reducer)
-      FilteringReducer.new(reducer, @pred)
+   def apply(reducer)
+      Reducer.new(reducer, @pred)
     end
   end
 
@@ -162,8 +138,8 @@ module Transducers
     FilteringTransducer.new(pred)
   end
 
-  class TakingTransducer < BaseTransducer
-    class TakingReducer < BaseReducer
+  class TakingTransducer
+    class Reducer < BaseReducer
       def initialize(reducer, n)
         super(reducer)
         @n = n
@@ -183,8 +159,8 @@ module Transducers
       @n = n
     end
 
-    def wrap(reducer)
-      TakingReducer.new(reducer, @n)
+    def apply(reducer)
+      Reducer.new(reducer, @n)
     end
   end
 
@@ -203,15 +179,15 @@ module Transducers
     end
   end
 
-  class CattingTransducer < BaseTransducer
-    class CattingReducer < BaseReducer
+  class CattingTransducer
+    class Reducer < BaseReducer
       def step(result, input)
         Transducers.transduce(PreservingReduced.new, @reducer, result, input)
       end
     end
 
-    def wrap(reducer)
-      CattingReducer.new(reducer)
+    def apply(reducer)
+      Reducer.new(reducer)
     end
   end
 
@@ -223,14 +199,15 @@ module Transducers
     compose(mapping(f, &b), cat)
   end
 
-  class ComposedTransducer < BaseTransducer
+  class ComposedTransducer
     def initialize(*transducers)
       @transducers = transducers
     end
 
-    def wrap(reducer)
+    def apply(reducer)
       @transducers.reverse.reduce(reducer) {|r,t| t.apply(r)}
     end
+
   end
 
   def compose(*transducers)

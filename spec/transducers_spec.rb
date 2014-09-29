@@ -24,32 +24,6 @@ RSpec.describe Transducers do
     end
   end
 
-  describe "supports explicit chaining" do
-    example do
-      expect([2,3,4]) do
-        mapping {|n| n + 1}.apply([], :<<).reduce([1,2,3])
-      end
-    end
-
-    example do
-      expect([2]) do
-        filtering(:even?).apply([], :<<).reduce([1,2,3])
-      end
-    end
-
-    example do
-      expect([1,2,3,4,5]) do
-        taking(5).apply([], :<<).reduce(1.upto(20))
-      end
-    end
-
-    example do
-      expect([0,0,1,0,1,2]) do
-        mapcat {|n| 0...n}.apply([], :<<).reduce([1,2,3])
-      end
-    end
-  end
-
   it "creates a filtering transducer" do
     expect([2,4]) do
       transduce(filtering(:even?), :<<, [], [1,2,3,4,5])
