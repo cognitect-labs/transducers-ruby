@@ -130,7 +130,18 @@ module Transducers
   end
 
   class FilteringTransducer
-    class Reducer < BaseReducer
+    class BlockReducer < BaseReducer
+      def initialize(reducer, block)
+        super(reducer)
+        @block = block
+      end
+
+      def step(result, input)
+        @block.call(input) ? @reducer.step(result, input) : result
+      end
+    end
+
+    class MethodReducer < BaseReducer
       def initialize(reducer, pred)
         super(reducer)
         @pred = pred
@@ -141,17 +152,18 @@ module Transducers
       end
     end
 
-    def initialize(pred)
+    def initialize(pred, &block)
       @pred = pred
+      @block = block
     end
 
-   def apply(reducer)
-      Reducer.new(reducer, @pred)
+    def apply(reducer)
+      @block ? BlockReducer.new(reducer, @block) : MethodReducer.new(reducer, @pred)
     end
   end
 
-  def filtering(pred)
-    FilteringTransducer.new(pred)
+  def filtering(pred=nil, &block)
+    FilteringTransducer.new(pred, &block)
   end
 
   class TakingTransducer

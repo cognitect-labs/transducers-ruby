@@ -36,9 +36,9 @@ RSpec.describe Transducers do
     end
   end
 
-  it "creates a filtering transducer" do
+  it "creates a filtering transducer with a Block" do
     expect([2,4]) do
-      transduce(filtering(:even?), :<<, [], [1,2,3,4,5])
+      transduce(filtering {|x| x.even?}, :<<, [], [1,2,3,4,5])
     end
   end
 
