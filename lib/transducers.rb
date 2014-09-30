@@ -231,10 +231,6 @@ module Transducers
     CattingTransducer.new
   end
 
-  def mapcat(f=nil, &b)
-    compose(mapping(f, &b), cat)
-  end
-
   class ComposedTransducer
     def initialize(*transducers)
       @transducers = transducers
@@ -247,6 +243,10 @@ module Transducers
 
   def compose(*transducers)
     ComposedTransducer.new(*transducers)
+  end
+
+  def mapcat(f=nil, &b)
+    compose(mapping(f, &b), cat)
   end
 
   module_function :mapping, :filtering, :taking, :cat, :compose, :mapcat
