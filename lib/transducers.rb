@@ -70,7 +70,7 @@ module Transducers
     end
 
     def init()
-      @reducer.init()
+      @reducer.respond_to?(:init) ? @reducer.init : nil
     end
 
     def result(result)
