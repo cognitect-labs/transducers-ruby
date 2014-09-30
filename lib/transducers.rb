@@ -79,7 +79,7 @@ module Transducers
   end
 
   class MappingTransducer
-    class Reducer < BaseReducer
+    class MappingReducer < BaseReducer
       def initialize(reducer, xform)
         super(reducer)
         @xform = xform
@@ -121,7 +121,7 @@ module Transducers
     end
 
     def apply(reducer)
-      Reducer.new(reducer, @xform)
+      MappingReducer.new(reducer, @xform)
     end
   end
 
@@ -167,7 +167,7 @@ module Transducers
   end
 
   class TakingTransducer
-    class Reducer < BaseReducer
+    class TakingReducer < BaseReducer
       def initialize(reducer, n)
         super(reducer)
         @n = n
@@ -188,7 +188,7 @@ module Transducers
     end
 
     def apply(reducer)
-      Reducer.new(reducer, @n)
+      TakingReducer.new(reducer, @n)
     end
   end
 
@@ -208,14 +208,14 @@ module Transducers
   end
 
   class CattingTransducer
-    class Reducer < BaseReducer
+    class CattingReducer < BaseReducer
       def step(result, input)
         Transducers.transduce(PreservingReduced.new, @reducer, result, input)
       end
     end
 
     def apply(reducer)
-      Reducer.new(reducer)
+      CattingReducer.new(reducer)
     end
   end
 
@@ -235,7 +235,6 @@ module Transducers
     def apply(reducer)
       @transducers.reverse.reduce(reducer) {|r,t| t.apply(r)}
     end
-
   end
 
   def compose(*transducers)
