@@ -25,18 +25,20 @@ module Transducers
   class Reducer
     attr_reader :init
 
-    def initialize(init, sym=:no_sym, &block)
+    def initialize(init, sym=nil, &block)
       @init = init
-      @sym = sym
-      @block = block
-      (class << self; self; end).class_eval do
-        if block
-          def step(result, input)
-            @block.call(result, input)
-          end
-        else
+      if sym
+        @sym = sym
+        (class << self; self; end).class_eval do
           def step(result, input)
             result.send(@sym, input)
+          end
+        end
+      else
+        @block = block
+        (class << self; self; end).class_eval do
+          def step(result, input)
+            @block.call(result, input)
           end
         end
       end
@@ -59,6 +61,7 @@ module Transducers
 
   class Reduced
     attr_reader :val
+
     def initialize(val)
       @val = val
     end
@@ -153,12 +156,17 @@ module Transducers
     end
 
     def initialize(pred, &block)
-      @pred = pred
-      @block = block
-    end
-
-    def apply(reducer)
-      @block ? BlockReducer.new(reducer, @block) : MethodReducer.new(reducer, @pred)
+      if block
+        @block = block
+        (class << self; self; end).class_eval do
+          def apply(reducer) BlockReducer.new(reducer, @block) end
+        end
+      else
+        @pred = pred
+        (class << self; self; end).class_eval do
+          def apply(reducer) MethodReducer.new(reducer, @pred) end
+        end
+      end
     end
   end
 
