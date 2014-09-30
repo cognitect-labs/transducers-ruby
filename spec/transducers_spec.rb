@@ -9,6 +9,18 @@ RSpec.describe Transducers do
     orig_expect(actual.call).to eq(expected)
   end
 
+  it "creates a mapping transducer with a block" do
+    expect([2,3,4]) do
+      transduce(mapping {|n| n + 1}, :<<, [], [1,2,3])
+    end
+  end
+
+  it "creates a mapping transducer with a Symbol" do
+    expect([2,3,4]) do
+      transduce(mapping(:succ), :<<, [], [1,2,3])
+    end
+  end
+
   it "creates a mapping transducer with an object" do
     inc = Class.new do
       def xform(n) n + 1 end
@@ -18,9 +30,9 @@ RSpec.describe Transducers do
     end
   end
 
-  it "creates a mapping transducer with a block" do
-    expect([2,3,4]) do
-      transduce(mapping {|n| n + 1}, :<<, [], [1,2,3])
+  it "creates a filtering transducer with a Symbol" do
+    expect([2,4]) do
+      transduce(filtering(:even?), :<<, [], [1,2,3,4,5])
     end
   end
 

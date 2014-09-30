@@ -90,7 +90,7 @@ module Transducers
       end
     end
 
-    class XForm
+    class BlockXForm
       def initialize(block)
         @block = block
       end
@@ -100,8 +100,24 @@ module Transducers
       end
     end
 
+    class MethodXForm
+      def initialize(method)
+        @method = method
+      end
+
+      def xform(input)
+        input.send @method
+      end
+    end
+
     def initialize(xform, &block)
-      @xform = block ? XForm.new(block) : xform
+      @xform = if block
+                 BlockXForm.new(block)
+               elsif Symbol === xform
+                 MethodXForm.new(xform)
+               else
+                 xform
+               end
     end
 
     def apply(reducer)
