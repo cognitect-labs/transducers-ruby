@@ -54,7 +54,7 @@ module Transducers
       end
     end
 
-    def result(result)
+    def complete(result)
       result
     end
   end
@@ -105,8 +105,8 @@ module Transducers
       @reducer.init
     end
 
-    def result(result)
-      @reducer.result(result)
+    def complete(result)
+      @reducer.complete(result)
     end
   end
 
@@ -197,6 +197,23 @@ module Transducers
 
   def taking(n)
     TakingTransducer.new(n)
+  end
+
+  # @api private
+  class TakingWhileTransducer < BaseTransducer
+    class TakingWhileReducer < BaseReducer
+      def step(result, input)
+        @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
+      end
+    end
+
+    def apply(reducer)
+      TakingWhileReducer.new(reducer, @handler, &@block)
+    end
+  end
+
+  def taking_while(pred=nil, &block)
+    TakingWhileTransducer.new(pred, &block)
   end
 
   class DroppingTransducer

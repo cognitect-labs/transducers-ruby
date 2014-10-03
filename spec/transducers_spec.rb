@@ -66,8 +66,6 @@ RSpec.describe Transducers do
     end
   end
 
-
-
   it "creates a removing transducer with a Symbol" do
     expect([1,3,5]) do
       transduce(removing(:even?), :<<, [], [1,2,3,4,5])
@@ -89,17 +87,19 @@ RSpec.describe Transducers do
     end
   end
 
-
-
-
-
-
-
-
-
   it "creates a taking transducer" do
     expect([1,2,3,4,5]) do
       transduce(taking(5), :<<, [], 1.upto(20))
+    end
+  end
+
+  it "creates a taking_while transducer" do
+    expect([1,2,3,4,5]) do
+      transduce(taking_while {|n| n < 6}, :<<, [], 1.upto(20))
+    end
+
+    expect([1,1,1]) do
+      transduce(taking_while {|n| n.odd?}, :<<, [], [1,1,1,2,3])
     end
   end
 

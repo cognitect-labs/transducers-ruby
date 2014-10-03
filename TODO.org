@@ -1,12 +1,12 @@
 * completion
-* TODO: implement [7/17]
+* TODO: implement [8/17]
 - [X] map
 - [X] filter
 - [X] cat
 - [X] mapcat (via comp)
 - [X] take
 - [X] remove
-- [ ] take-while
+- [X] take-while
 - [X] drop
 - [ ] drop-while
 - [ ] take-nth
