@@ -29,29 +29,29 @@ T = Transducers
 
 Benchmark.benchmark do |bm|
   {"enum" => e, "array" => a}.each do |label, coll|
-    puts "filtering with object (#{label})"
+    puts "filter with object (#{label})"
     3.times do
       bm.report do
         times.times do
-          T.transduce(T.filtering(Even.new), :<<, [], coll)
+          T.transduce(T.filter(Even.new), :<<, [], coll)
         end
       end
     end
 
-    puts "filtering with Symbol(#{label})"
+    puts "filter with Symbol(#{label})"
     3.times do
       bm.report do
         times.times do
-          T.transduce(T.filtering(:even?), :<<, [], coll)
+          T.transduce(T.filter(:even?), :<<, [], coll)
         end
       end
     end
 
-    puts "filtering with block (#{label})"
+    puts "filter with block (#{label})"
     3.times do
       bm.report do
         times.times do
-          T.transduce(T.filtering {|n| n.even?}, :<<, [], coll)
+          T.transduce(T.filter {|n| n.even?}, :<<, [], coll)
         end
       end
     end

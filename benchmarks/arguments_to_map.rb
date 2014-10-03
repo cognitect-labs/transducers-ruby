@@ -30,29 +30,29 @@ T = Transducers
 
 Benchmark.benchmark do |bm|
   {"enum" => e, "array" => a}.each do |label, coll|
-    puts "mapping with object (#{label})"
+    puts "map with object (#{label})"
     3.times do
       bm.report do
         times.times do
-          T.transduce(T.mapping(Inc.new), :<<, [], coll)
+          T.transduce(T.map(Inc.new), :<<, [], coll)
         end
       end
     end
 
-    puts "mapping with Symbol(#{label})"
+    puts "map with Symbol(#{label})"
     3.times do
       bm.report do
         times.times do
-          T.transduce(T.mapping(:succ), :<<, [], coll)
+          T.transduce(T.map(:succ), :<<, [], coll)
         end
       end
     end
 
-    puts "mapping with block (#{label})"
+    puts "map with block (#{label})"
     3.times do
       bm.report do
         times.times do
-          T.transduce(T.mapping {|n| n + 1}, :<<, [], coll)
+          T.transduce(T.map {|n| n + 1}, :<<, [], coll)
         end
       end
     end

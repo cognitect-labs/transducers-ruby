@@ -24,9 +24,9 @@ class Even
   def process(n) n.even? end
 end
 
-mapping_inc         = Transducers.mapping(Inc.new)
-filtering_even      = Transducers.filtering(Even.new)
-map_inc_filter_even = Transducers.compose(mapping_inc, filtering_even)
+map_inc         = Transducers.map(Inc.new)
+filter_even      = Transducers.filter(Even.new)
+map_inc_filter_even = Transducers.compose(map_inc, filter_even)
 e = 1.upto(1000)
 a = e.to_a
 
@@ -46,11 +46,11 @@ Benchmark.benchmark do |bm|
       end
     end
 
-    puts "filtering (#{label})"
+    puts "filter (#{label})"
     3.times do
       bm.report do
         times.times do
-          T.transduce(filtering_even, :<<, [], coll)
+          T.transduce(filter_even, :<<, [], coll)
         end
       end
     end
@@ -66,11 +66,11 @@ Benchmark.benchmark do |bm|
       end
     end
 
-    puts "mapping (#{label})"
+    puts "map (#{label})"
     3.times do
       bm.report do
         times.times do
-          T.transduce(mapping_inc, :<<, [], coll)
+          T.transduce(map_inc, :<<, [], coll)
         end
       end
     end
@@ -88,7 +88,7 @@ Benchmark.benchmark do |bm|
       end
     end
 
-    puts "mapping + filtering (#{label})"
+    puts "map + filter (#{label})"
     3.times do
       bm.report do
         times.times do
@@ -107,7 +107,7 @@ select (enum)
    0.010000   0.000000   0.010000 (  0.008299)
    0.010000   0.000000   0.010000 (  0.007843)
    0.000000   0.000000   0.000000 (  0.007821)
-filtering (enum)
+filter (enum)
    0.020000   0.000000   0.020000 (  0.017747)
    0.020000   0.000000   0.020000 (  0.019915)
    0.020000   0.000000   0.020000 (  0.019416)
@@ -116,7 +116,7 @@ map (enum)
    0.010000   0.000000   0.010000 (  0.008053)
    0.010000   0.000000   0.010000 (  0.007952)
    0.010000   0.000000   0.010000 (  0.009550)
-mapping (enum)
+map (enum)
    0.020000   0.000000   0.020000 (  0.021479)
    0.020000   0.000000   0.020000 (  0.020805)
    0.020000   0.000000   0.020000 (  0.023205)
@@ -125,7 +125,7 @@ map + select (enum)
    0.010000   0.000000   0.010000 (  0.015156)
    0.020000   0.000000   0.020000 (  0.016545)
    0.010000   0.010000   0.020000 (  0.019388)
-mapping + filtering (enum)
+map + filter (enum)
    0.030000   0.000000   0.030000 (  0.026530)
    0.030000   0.000000   0.030000 (  0.025563)
    0.020000   0.000000   0.020000 (  0.027893)
@@ -134,7 +134,7 @@ select (array)
    0.010000   0.000000   0.010000 (  0.006520)
    0.010000   0.000000   0.010000 (  0.006570)
    0.000000   0.000000   0.000000 (  0.007032)
-filtering (array)
+filter (array)
    0.020000   0.000000   0.020000 (  0.022639)
    0.030000   0.000000   0.030000 (  0.023813)
    0.020000   0.000000   0.020000 (  0.022440)
@@ -143,7 +143,7 @@ map (array)
    0.010000   0.000000   0.010000 (  0.005880)
    0.000000   0.000000   0.000000 (  0.005613)
    0.010000   0.000000   0.010000 (  0.005294)
-mapping (array)
+map (array)
    0.020000   0.000000   0.020000 (  0.024443)
    0.030000   0.000000   0.030000 (  0.023856)
    0.020000   0.000000   0.020000 (  0.024172)
@@ -152,7 +152,7 @@ map + select (array)
    0.010000   0.000000   0.010000 (  0.012158)
    0.010000   0.000000   0.010000 (  0.012061)
    0.020000   0.000000   0.020000 (  0.014131)
-mapping + filtering (array)
+map + filter (array)
    0.020000   0.000000   0.020000 (  0.026898)
    0.030000   0.000000   0.030000 (  0.025745)
    0.030000   0.000000   0.030000 (  0.028196)

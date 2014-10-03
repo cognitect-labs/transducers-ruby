@@ -43,7 +43,7 @@ RSpec.describe Transducers::Reducer do
         self
       end
     end.new
-    result = Transducers.transduce(Transducers.mapping {|n|n+1}, :foo, init, [1,2,3])
+    result = Transducers.transduce(Transducers.map {|n|n+1}, :foo, init, [1,2,3])
     expect(result.val).to eq([2,3,4])
   end
 end

@@ -23,89 +23,89 @@ RSpec.describe Transducers do
     orig_expect(actual.call).to eq(expected)
   end
 
-  it "creates a mapping transducer with a block" do
+  it "creates a map transducer with a block" do
     expect([2,3,4]) do
-      T.transduce(T.mapping {|n| n + 1}, :<<, [], [1,2,3])
+      T.transduce(T.map {|n| n + 1}, :<<, [], [1,2,3])
     end
   end
 
-  it "creates a mapping transducer with a Symbol" do
+  it "creates a map transducer with a Symbol" do
     expect([2,3,4]) do
-      T.transduce(T.mapping(:succ), :<<, [], [1,2,3])
+      T.transduce(T.map(:succ), :<<, [], [1,2,3])
     end
   end
 
-  it "creates a mapping transducer with an object that implements process" do
+  it "creates a map transducer with an object that implements process" do
     inc = Class.new do
       def process(n) n + 1 end
     end.new
 
     expect([2,3,4]) do
-      T.transduce(T.mapping(inc), :<<, [], [1,2,3])
+      T.transduce(T.map(inc), :<<, [], [1,2,3])
     end
   end
 
-  it "creates a filtering transducer with a Symbol" do
+  it "creates a filter transducer with a Symbol" do
     expect([2,4]) do
-      T.transduce(T.filtering(:even?), :<<, [], [1,2,3,4,5])
+      T.transduce(T.filter(:even?), :<<, [], [1,2,3,4,5])
     end
   end
 
-  it "creates a filtering transducer with a Block" do
+  it "creates a filter transducer with a Block" do
     expect([2,4]) do
-      T.transduce(T.filtering {|x| x.even?}, :<<, [], [1,2,3,4,5])
+      T.transduce(T.filter {|x| x.even?}, :<<, [], [1,2,3,4,5])
     end
   end
 
-  it "creates a filtering transducer with an object that implements process" do
+  it "creates a filter transducer with an object that implements process" do
     expect([2,4]) do
       even = Class.new do
         def process(n) n.even? end
       end.new
-      T.transduce(T.filtering(even), :<<, [], [1,2,3,4,5])
+      T.transduce(T.filter(even), :<<, [], [1,2,3,4,5])
     end
   end
 
-  it "creates a removing transducer with a Symbol" do
+  it "creates a remove transducer with a Symbol" do
     expect([1,3,5]) do
-      T.transduce(T.removing(:even?), :<<, [], [1,2,3,4,5])
+      T.transduce(T.remove(:even?), :<<, [], [1,2,3,4,5])
     end
   end
 
-  it "creates a removing transducer with a Block" do
+  it "creates a remove transducer with a Block" do
     expect([1,3,5]) do
-      T.transduce(T.removing {|x| x.even?}, :<<, [], [1,2,3,4,5])
+      T.transduce(T.remove {|x| x.even?}, :<<, [], [1,2,3,4,5])
     end
   end
 
-  it "creates a removing transducer with an object that implements process" do
+  it "creates a remove transducer with an object that implements process" do
     expect([1,3,5]) do
       even = Class.new do
         def process(n) n.even? end
       end.new
-      T.transduce(T.removing(even), :<<, [], [1,2,3,4,5])
+      T.transduce(T.remove(even), :<<, [], [1,2,3,4,5])
     end
   end
 
-  it "creates a taking transducer" do
+  it "creates a take transducer" do
     expect([1,2,3,4,5]) do
-      T.transduce(T.taking(5), :<<, [], 1.upto(20))
+      T.transduce(T.take(5), :<<, [], 1.upto(20))
     end
   end
 
-  it "creates a taking_while transducer" do
+  it "creates a take_while transducer" do
     expect([1,2,3,4,5]) do
-      T.transduce(T.taking_while {|n| n < 6}, :<<, [], 1.upto(20))
+      T.transduce(T.take_while {|n| n < 6}, :<<, [], 1.upto(20))
     end
 
     expect([1,1,1]) do
-      T.transduce(T.taking_while {|n| n.odd?}, :<<, [], [1,1,1,2,3])
+      T.transduce(T.take_while {|n| n.odd?}, :<<, [], [1,1,1,2,3])
     end
   end
 
-  it "creates a dropping transducer" do
+  it "creates a drop transducer" do
     expect([16,17,18,19,20]) do
-      T.transduce(T.dropping(15), :<<, [], 1.upto(20))
+      T.transduce(T.drop(15), :<<, [], 1.upto(20))
     end
   end
 
@@ -133,7 +133,7 @@ RSpec.describe Transducers do
 
   it "transduces a String" do
     expect("THIS") do
-      T.transduce(T.mapping {|c| c.upcase},
+      T.transduce(T.map {|c| c.upcase},
                 Transducers::Reducer.new("") {|r,i| r << i},
                 "this")
     end
@@ -141,36 +141,36 @@ RSpec.describe Transducers do
 
   it "transduces a range" do
     expect([2,3,4]) do
-      T.transduce(T.mapping(:succ), :<<, [], 1..3)
+      T.transduce(T.map(:succ), :<<, [], 1..3)
     end
   end
 
   it "raises when no initial value method is defined on the reducer" do
     orig_expect do
       r = Class.new { def step(_,_) end }.new
-      T.transduce(T.mapping(:succ), r, [1,2,3])
+      T.transduce(T.map(:succ), r, [1,2,3])
     end.to raise_error(NoMethodError)
   end
 
   it "raises when it receives a symbol but no initial value" do
     orig_expect do
-      T.transduce(T.mapping(:succ), :<<, [1,2,3])
+      T.transduce(T.map(:succ), :<<, [1,2,3])
     end.to raise_error(ArgumentError, "No init provided")
   end
 
   describe "composition" do
     example do
       expect([3,7]) do
-        td = T.compose(T.mapping {|a| [a.reduce(&:+)]}, T.cat)
+        td = T.compose(T.map {|a| [a.reduce(&:+)]}, T.cat)
         T.transduce(td, :<<, [], [[1,2],[3,4]])
       end
     end
 
     example do
       expect(12) do
-        td = T.compose(T.taking(5),
-                       T.mapping {|n| n + 1},
-                       T.filtering(:even?))
+        td = T.compose(T.take(5),
+                       T.map {|n| n + 1},
+                       T.filter(:even?))
         T.transduce(td, :+, 0, 1..20)
       end
     end

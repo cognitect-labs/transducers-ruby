@@ -50,6 +50,17 @@ module Transducers
     end
   end
 
+  class PreservingReduced
+    def apply(reducer)
+      @reducer = reducer
+    end
+
+    def step(result, input)
+      ret = @reducer.step(result, input)
+      Reduced === ret ? Reduced.new(ret) : ret
+    end
+  end
+
   # @api private
   class WrappingReducer
     class BlockHandler
@@ -149,7 +160,7 @@ module Transducers
 
 
     # @return [Transducer]
-    define_transducer_class "mapping" do
+    define_transducer_class "map" do
       define_reducer_class do
         def step(result, input)
           @reducer.step(result, @handler.process(input))
@@ -158,7 +169,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "taking_while" do
+    define_transducer_class "take_while" do
       define_reducer_class do
         def step(result, input)
           @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
@@ -167,7 +178,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "filtering" do
+    define_transducer_class "filter" do
       define_reducer_class do
         def step(result, input)
           @handler.process(input) ? @reducer.step(result, input) : result
@@ -176,7 +187,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "removing" do
+    define_transducer_class "remove" do
       define_reducer_class do
         def step(result, input)
           @handler.process(input) ? result : @reducer.step(result, input)
@@ -185,7 +196,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "taking" do
+    define_transducer_class "take" do
       define_reducer_class do
         def initialize(reducer, n)
           super(reducer)
@@ -212,7 +223,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "dropping" do
+    define_transducer_class "drop" do
       define_reducer_class do
         def initialize(reducer, n)
           super(reducer)
@@ -242,17 +253,6 @@ module Transducers
     # @return [Transducer]
     define_transducer_class "cat" do
       define_reducer_class do
-        class PreservingReduced
-          def apply(reducer)
-            @reducer = reducer
-          end
-
-          def step(result, input)
-            ret = @reducer.step(result, input)
-            Reduced === ret ? Reduced.new(ret) : ret
-          end
-        end
-
         def step(result, input)
           Transducers.transduce(PreservingReduced.new, @reducer, result, input)
         end
@@ -277,7 +277,7 @@ module Transducers
 
     # @return [Transducer]
     def mapcat(process=nil, &b)
-      compose(mapping(process, &b), cat)
+      compose(map(process, &b), cat)
     end
   end
 end
