@@ -17,24 +17,20 @@ module Transducers
   def transduce(transducer, reducer, init=:init_not_supplied , coll)
     r = transducer.apply(Transducers.reducer(init, reducer))
     result = (init == :init_not_supplied) ? r.init : init
-    return transduce_string(r, result, coll) if String === coll
-    coll.each do |input|
+    m = case coll
+        when Enumerable
+          :each
+        when String
+          :each_char
+        end
+    coll.send(m) do |input|
       return result.val if Transducers::Reduced === result
       result = r.step(result, input)
     end
     result
   end
 
-  # @api private
-  def transduce_string(reducer, result, str)
-    str.each_char do |input|
-      return result.val if Transducers::Reduced === result
-      result = reducer.step(result, input)
-    end
-    result
-  end
-
-  module_function :transduce, :transduce_string
+  module_function :transduce
 
   class Reducer
     attr_reader :init

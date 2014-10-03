@@ -94,11 +94,17 @@ RSpec.describe Transducers do
     end
   end
 
-  it "transduces with a String" do
+  it "transduces a String" do
     expect("THIS") do
       transduce(mapping {|c| c.upcase},
                 Transducers::Reducer.new("") {|r,i| r << i},
                 "this")
+    end
+  end
+
+  it "transduces a range" do
+    expect([2,3,4]) do
+      transduce(mapping(:succ), :<<, [], 1..3)
     end
   end
 
