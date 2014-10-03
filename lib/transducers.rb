@@ -14,9 +14,11 @@
 
 # Transducers are composable algorithmic transformations.
 module Transducers
-  def transduce(transducer, reducer, init=:init_not_supplied , coll)
+  NO_INIT_PROVIDED = :no_init_provided
+
+  def transduce(transducer, reducer, init=NO_INIT_PROVIDED, coll)
     r = transducer.apply(Transducers.reducer(init, reducer))
-    result = (init == :init_not_supplied) ? r.init : init
+    result = init == NO_INIT_PROVIDED ? r.init : init
     m = case coll
         when Enumerable
           :each
@@ -63,6 +65,7 @@ module Transducers
     if sym_or_reducer.respond_to?(:step)
       sym_or_reducer
     else
+      raise ArgumentError.new("No init provided") if init == NO_INIT_PROVIDED
       Reducer.new(init, sym_or_reducer, &block)
     end
   end

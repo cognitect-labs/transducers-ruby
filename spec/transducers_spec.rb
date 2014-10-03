@@ -115,6 +115,12 @@ RSpec.describe Transducers do
     end.to raise_error(NoMethodError)
   end
 
+  it "raises when it receives a symbol but no initial value" do
+    orig_expect do
+      transduce(mapping(:succ), :<<, [1,2,3])
+    end.to raise_error(ArgumentError, "No init provided")
+  end
+
   describe "composition" do
     example do
       expect([3,7]) do
