@@ -112,7 +112,7 @@ module Transducers
     end
 
     def init()
-      @reducer.respond_to?(:init) ? @reducer.init : nil
+      @reducer.init
     end
 
     def result(result)

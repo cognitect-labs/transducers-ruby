@@ -108,11 +108,11 @@ RSpec.describe Transducers do
     end
   end
 
-  it "inits to nil when there is no init fn on the reducer" do
-    expect([nil,2,3,4]) do
-      r = Class.new { define_method(:step) {|r,i| r ? (r << i) : [r, i]} }.new
-      transduce(mapping {|n| n + 1}, r, [1,2,3])
-    end
+  it "raises when no initial value method is defined on the reducer" do
+    orig_expect do
+      r = Class.new { def step(_,_) end }.new
+      transduce(mapping(:succ), r, [1,2,3])
+    end.to raise_error(NoMethodError)
   end
 
   describe "composition" do
