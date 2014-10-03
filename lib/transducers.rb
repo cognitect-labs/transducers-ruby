@@ -223,6 +223,34 @@ module Transducers
     end
 
     # @return [Transducer]
+    define_transducer_class "take_nth" do
+      define_reducer_class do
+        def initialize(reducer, n)
+          super(reducer)
+          @n = n
+          @count = 0
+        end
+
+        def step(result, input)
+          @count += 1
+          if @count % @n == 0
+            @reducer.step(result, input)
+          else
+            result
+          end
+        end
+      end
+
+      def initialize(n)
+        @n = n
+      end
+
+      def apply(reducer)
+        reducer_class.new(reducer, @n)
+      end
+    end
+
+    # @return [Transducer]
     define_transducer_class "drop" do
       define_reducer_class do
         def initialize(reducer, n)

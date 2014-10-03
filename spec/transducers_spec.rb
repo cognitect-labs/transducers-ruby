@@ -103,6 +103,20 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a take_nth transducer" do
+    expect([3,6,9,12]) do
+      T.transduce(T.take_nth(3), :<<, [], 1..12)
+    end
+
+    expect([3,6,9,12]) do
+      T.transduce(T.take_nth(3), :<<, [], 1..13)
+    end
+
+    expect([3,6,9,12]) do
+      T.transduce(T.take_nth(3), :<<, [], 1..14)
+    end
+  end
+
   it "creates a drop transducer" do
     expect([16,17,18,19,20]) do
       T.transduce(T.drop(15), :<<, [], 1.upto(20))
