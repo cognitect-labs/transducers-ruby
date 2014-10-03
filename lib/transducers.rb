@@ -17,17 +17,16 @@ module Transducers
   NO_INIT_PROVIDED = :no_init_provided
 
   def transduce(transducer, reducer, init=NO_INIT_PROVIDED, coll)
-    r = transducer.apply(Transducers.reducer(init, reducer))
-    result = init == NO_INIT_PROVIDED ? r.init : init
+    reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:step)
+    reducer = transducer.apply(reducer)
+    result = init == NO_INIT_PROVIDED ? reducer.init : init
     m = case coll
-        when Enumerable
-          :each
-        when String
-          :each_char
+        when Enumerable then :each
+        when String     then :each_char
         end
     coll.send(m) do |input|
       return result.val if Transducers::Reduced === result
-      result = r.step(result, input)
+      result = reducer.step(result, input)
     end
     result
   end
@@ -38,6 +37,7 @@ module Transducers
     attr_reader :init
 
     def initialize(init, sym=nil, &block)
+      raise ArgumentError.new("No init provided") if init == NO_INIT_PROVIDED
       @init = init
       if sym
         @sym = sym
@@ -60,17 +60,6 @@ module Transducers
       result
     end
   end
-
-  def reducer(init, sym_or_reducer=nil, &block)
-    if sym_or_reducer.respond_to?(:step)
-      sym_or_reducer
-    else
-      raise ArgumentError.new("No init provided") if init == NO_INIT_PROVIDED
-      Reducer.new(init, sym_or_reducer, &block)
-    end
-  end
-
-  module_function :reducer
 
   # @api private
   class Reduced
