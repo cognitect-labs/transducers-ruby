@@ -72,6 +72,12 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a dropping transducer" do
+    expect([16,17,18,19,20]) do
+      transduce(dropping(15), :<<, [], 1.upto(20))
+    end
+  end
+
   it "creates a cat transducer" do
     expect([1,2,3,4]) do
       transduce(cat, :<<, [], [[1,2],[3,4]])

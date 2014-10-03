@@ -182,6 +182,36 @@ module Transducers
     TakingTransducer.new(n)
   end
 
+  class DroppingTransducer
+    class Reducer < BaseReducer
+      def initialize(reducer, n)
+        super(reducer)
+        @n = n
+      end
+
+      def step(result, input)
+        @n -= 1
+        if @n <= -1
+          @reducer.step(result, input)
+        else
+          result
+        end
+      end
+    end
+
+    def initialize(n)
+      @n = n
+    end
+
+    def reducer(reducer)
+      Reducer.new(reducer, @n)
+    end
+  end
+
+  def dropping(n)
+    DroppingTransducer.new(n)
+  end
+
   # @api private
   class PreservingReduced
     def apply(reducer)
