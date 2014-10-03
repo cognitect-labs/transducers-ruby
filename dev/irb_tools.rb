@@ -12,10 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$LOAD_PATH << 'lib'
-require 'transducers'
+require 'stringio'
 
-RSpec.configure do |config|
-  config.filter_run :focus
-  config.run_all_when_everything_filtered = true
+def time
+  start = Time.now
+  yield
+  puts "Elapsed: #{Time.now - start}"
+end
+
+class Object
+  def to_transit(format=:json)
+    sio = StringIO.new
+    Transit::Writer.new(format, sio).write(self)
+    sio.string
+  end
+end
+
+class String
+  def from_transit(format=:json)
+    sio = StringIO.new(self)
+    Transit::Reader.new(format, sio).read
+  end
 end
