@@ -169,15 +169,6 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "take_while" do
-      define_reducer_class do
-        def step(result, input)
-          @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
-        end
-      end
-    end
-
-    # @return [Transducer]
     define_transducer_class "filter" do
       define_reducer_class do
         def step(result, input)
@@ -219,6 +210,16 @@ module Transducers
 
       def apply(reducer)
         reducer_class.new(reducer, @n)
+      end
+    end
+
+
+    # @return [Transducer]
+    define_transducer_class "take_while" do
+      define_reducer_class do
+        def step(result, input)
+          @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
+        end
       end
     end
 
