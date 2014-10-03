@@ -1,5 +1,19 @@
-* implement the rest of the fns
-- remove, take, take-while, drop-while, take-nth,
-  replace, into, partition-by, partition-all, keep, keep-indexed,
-  dedupe
 * completion
+* TODO: implement [7/17]
+- [X] map
+- [X] filter
+- [X] cat
+- [X] mapcat (via comp)
+- [X] take
+- [X] remove
+- [ ] take-while
+- [X] drop
+- [ ] drop-while
+- [ ] take-nth
+- [ ] replace
+- [ ] keep
+- [ ] keep-indexed
+- [ ] partition-by
+- [ ] partition-all
+- [ ] dedupe
+- [ ] random-sample
