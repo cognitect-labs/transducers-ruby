@@ -294,5 +294,5 @@ module Transducers
     compose(mapping(process, &b), cat)
   end
 
-  module_function :mapping, :filtering, :taking, :cat, :compose, :mapcat
+  module_function :mapping, :filtering, :taking, :cat, :compose, :mapcat, :dropping, :taking_while, :removing
 end
