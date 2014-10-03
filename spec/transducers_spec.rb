@@ -21,10 +21,11 @@ RSpec.describe Transducers do
     end
   end
 
-  it "creates a mapping transducer with an object" do
+  it "creates a mapping transducer with an object that implements xform" do
     inc = Class.new do
       def xform(n) n + 1 end
     end.new
+
     expect([2,3,4]) do
       transduce(mapping(inc), :<<, [], [1,2,3])
     end
@@ -39,6 +40,15 @@ RSpec.describe Transducers do
   it "creates a filtering transducer with a Block" do
     expect([2,4]) do
       transduce(filtering {|x| x.even?}, :<<, [], [1,2,3,4,5])
+    end
+  end
+
+  it "creates a filtering transducer with an object that implements pred" do
+    expect([2,4]) do
+      even = Class.new do
+        def pred(n) n.even? end
+      end.new
+      transduce(filtering(even), :<<, [], [1,2,3,4,5])
     end
   end
 

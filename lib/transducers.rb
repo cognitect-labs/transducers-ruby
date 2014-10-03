@@ -133,25 +133,28 @@ module Transducers
   end
 
   class FilteringTransducer
-    class BlockReducer < BaseReducer
-      def initialize(reducer, block)
-        super(reducer)
-        @block = block
-      end
-
-      def step(result, input)
-        @block.call(input) ? @reducer.step(result, input) : result
-      end
-    end
-
-    class MethodReducer < BaseReducer
+    class FilteringReducer < BaseReducer
       def initialize(reducer, pred)
         super(reducer)
         @pred = pred
       end
+    end
 
+    class BlockReducer < FilteringReducer
+      def step(result, input)
+        @pred.call(input) ? @reducer.step(result, input) : result
+      end
+    end
+
+    class MethodReducer < FilteringReducer
       def step(result, input)
         input.send(@pred) ? @reducer.step(result, input) : result
+      end
+    end
+
+    class ObjectReducer < FilteringReducer
+      def step(result, input)
+        @pred.pred(input) ? @reducer.step(result, input) : result
       end
     end
 
@@ -161,10 +164,15 @@ module Transducers
         (class << self; self; end).class_eval do
           def apply(reducer) BlockReducer.new(reducer, @block) end
         end
-      else
+      elsif Symbol === pred
         @pred = pred
         (class << self; self; end).class_eval do
           def apply(reducer) MethodReducer.new(reducer, @pred) end
+        end
+      else
+        @pred = pred
+        (class << self; self; end).class_eval do
+          def apply(reducer) ObjectReducer.new(reducer, @pred) end
         end
       end
     end
