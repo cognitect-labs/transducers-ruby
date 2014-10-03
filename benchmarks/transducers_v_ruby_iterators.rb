@@ -20,8 +20,12 @@ class Inc
   def process(n) n + 1 end
 end
 
+class Even
+  def process(n) n.even? end
+end
+
 mapping_inc         = Transducers.mapping(Inc.new)
-filtering_even      = Transducers.filtering(:even?)
+filtering_even      = Transducers.filtering(Even.new)
 map_inc_filter_even = Transducers.compose(mapping_inc, filtering_even)
 e = 1.upto(1000)
 a = e.to_a
