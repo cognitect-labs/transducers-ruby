@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Transducers are composable algorithmic transformations.
 module Transducers
   def transduce(transducer, reducer, init=:init_not_supplied , coll)
     r = transducer.apply(Transducers.reducer(init, reducer))
@@ -24,6 +25,7 @@ module Transducers
     result
   end
 
+  # @api private
   def transduce_string(reducer, result, str)
     str.each_char do |input|
       return result.val if Transducers::Reduced === result
@@ -71,6 +73,7 @@ module Transducers
 
   module_function :reducer
 
+  # @api private
   class Reduced
     attr_reader :val
 
@@ -79,6 +82,7 @@ module Transducers
     end
   end
 
+  # @api private
   class BaseReducer
     def initialize(reducer)
       @reducer = reducer
@@ -93,6 +97,7 @@ module Transducers
     end
   end
 
+  # @api private
   class MappingTransducer
     class MappingReducer < BaseReducer
       def initialize(reducer, xform)
@@ -144,6 +149,7 @@ module Transducers
     MappingTransducer.new(xform, &block)
   end
 
+  # @api private
   class FilteringTransducer
     class FilteringReducer < BaseReducer
       def initialize(reducer, pred)
@@ -194,6 +200,7 @@ module Transducers
     FilteringTransducer.new(pred, &block)
   end
 
+  # @api private
   class TakingTransducer
     class TakingReducer < BaseReducer
       def initialize(reducer, n)
@@ -224,6 +231,7 @@ module Transducers
     TakingTransducer.new(n)
   end
 
+  # @api private
   class PreservingReduced
     def apply(reducer)
       @reducer = reducer
@@ -235,6 +243,7 @@ module Transducers
     end
   end
 
+  # @api private
   class CattingTransducer
     class CattingReducer < BaseReducer
       def step(result, input)
@@ -251,6 +260,7 @@ module Transducers
     CattingTransducer.new
   end
 
+  # @api private
   class ComposedTransducer
     def initialize(*transducers)
       @transducers = transducers
@@ -265,8 +275,8 @@ module Transducers
     ComposedTransducer.new(*transducers)
   end
 
-  def mapcat(f=nil, &b)
-    compose(mapping(f, &b), cat)
+  def mapcat(xform=nil, &b)
+    compose(mapping(xform, &b), cat)
   end
 
   module_function :mapping, :filtering, :taking, :cat, :compose, :mapcat
