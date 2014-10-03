@@ -15,8 +15,6 @@
 # Transducers are composable algorithmic transformations.
 module Transducers
   class Reducer
-    attr_reader :init
-
     def initialize(init, sym=nil, &block)
       raise ArgumentError.new("No init provided") if init == :no_init_provided
       @init = init
@@ -37,12 +35,13 @@ module Transducers
       end
     end
 
-    def complete(result)
-      result
+    def init()           @init  end
+    def complete(result) result end
+    def step(result, input)
+      # placeholder for docs - overwritten in initalize
     end
   end
 
-  # @api private
   class Reduced
     attr_reader :val
 
@@ -93,6 +92,7 @@ module Transducers
     end
   end
 
+  # @api private
   class BaseTransducer
     class << self
       attr_reader :reducer_class
