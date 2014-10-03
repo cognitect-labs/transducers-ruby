@@ -14,23 +14,6 @@
 
 # Transducers are composable algorithmic transformations.
 module Transducers
-  def transduce(transducer, reducer, init=:no_init_provided, coll)
-    reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:step)
-    reducer = transducer.apply(reducer)
-    result = init == :no_init_provided ? reducer.init : init
-    m = case coll
-        when Enumerable then :each
-        when String     then :each_char
-        end
-    coll.send(m) do |input|
-      return result.val if Transducers::Reduced === result
-      result = reducer.step(result, input)
-    end
-    result
-  end
-
-  module_function :transduce
-
   class Reducer
     attr_reader :init
 
@@ -130,155 +113,171 @@ module Transducers
     end
   end
 
-  def self.define_transducer_class(name, &block)
-    t = Class.new(BaseTransducer)
-    t.class_eval(&block)
-    unless t.instance_methods.include? :apply
-      t.class_eval do
-        define_method :apply do |reducer|
-          reducer_class.new(reducer, @handler, &@block)
+  class << self
+    def transduce(transducer, reducer, init=:no_init_provided, coll)
+      reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:step)
+      reducer = transducer.apply(reducer)
+      result = init == :no_init_provided ? reducer.init : init
+      m = case coll
+          when Enumerable then :each
+          when String     then :each_char
+          end
+      coll.send(m) do |input|
+        return result.val if Transducers::Reduced === result
+        result = reducer.step(result, input)
+      end
+      result
+    end
+
+    def self.define_transducer_class(name, &block)
+      t = Class.new(BaseTransducer)
+      t.class_eval(&block)
+      unless t.instance_methods.include? :apply
+        t.class_eval do
+          define_method :apply do |reducer|
+            reducer_class.new(reducer, @handler, &@block)
+          end
+        end
+      end
+
+      Transducers.send(:define_method, name) do |handler=nil, &b|
+        t.new(handler, &b)
+      end
+
+      Transducers.send(:module_function, name)
+    end
+
+
+    # @return [Transducer]
+    define_transducer_class "mapping" do
+      define_reducer_class do
+        def step(result, input)
+          @reducer.step(result, @handler.process(input))
         end
       end
     end
 
-    Transducers.send(:define_method, name) do |handler=nil, &b|
-      t.new(handler, &b)
-    end
-
-    Transducers.send(:module_function, name)
-  end
-
-  # @return [Transducer]
-  define_transducer_class "mapping" do
-    define_reducer_class do
-      def step(result, input)
-        @reducer.step(result, @handler.process(input))
-      end
-    end
-  end
-
-  # @return [Transducer]
-  define_transducer_class "taking_while" do
-    define_reducer_class do
-      def step(result, input)
-        @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
-      end
-    end
-  end
-
-  # @return [Transducer]
-  define_transducer_class "filtering" do
-    define_reducer_class do
-      def step(result, input)
-        @handler.process(input) ? @reducer.step(result, input) : result
-      end
-    end
-  end
-
-  # @return [Transducer]
-  define_transducer_class "removing" do
-    define_reducer_class do
-      def step(result, input)
-        @handler.process(input) ? result : @reducer.step(result, input)
-      end
-    end
-  end
-
-  # @return [Transducer]
-  define_transducer_class "taking" do
-    define_reducer_class do
-      def initialize(reducer, n)
-        super(reducer)
-        @n = n
-      end
-
-      def step(result, input)
-        @n -= 1
-        if @n == -1
-          Reduced.new(result)
-        else
-          @reducer.step(result, input)
+    # @return [Transducer]
+    define_transducer_class "taking_while" do
+      define_reducer_class do
+        def step(result, input)
+          @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
         end
       end
     end
 
-    def initialize(n)
-      @n = n
-    end
-
-    def apply(reducer)
-      reducer_class.new(reducer, @n)
-    end
-  end
-
-  # @return [Transducer]
-  define_transducer_class "dropping" do
-    define_reducer_class do
-      def initialize(reducer, n)
-        super(reducer)
-        @n = n
-      end
-
-      def step(result, input)
-        @n -= 1
-
-        if @n <= -1
-          @reducer.step(result, input)
-        else
-          result
+    # @return [Transducer]
+    define_transducer_class "filtering" do
+      define_reducer_class do
+        def step(result, input)
+          @handler.process(input) ? @reducer.step(result, input) : result
         end
       end
     end
 
-    def initialize(n)
-      @n = n
+    # @return [Transducer]
+    define_transducer_class "removing" do
+      define_reducer_class do
+        def step(result, input)
+          @handler.process(input) ? result : @reducer.step(result, input)
+        end
+      end
     end
 
-    def apply(reducer)
-      reducer_class.new(reducer, @n)
-    end
-  end
-
-  # @return [Transducer]
-  define_transducer_class "cat" do
-    define_reducer_class do
-      class PreservingReduced
-        def apply(reducer)
-          @reducer = reducer
+    # @return [Transducer]
+    define_transducer_class "taking" do
+      define_reducer_class do
+        def initialize(reducer, n)
+          super(reducer)
+          @n = n
         end
 
         def step(result, input)
-          ret = @reducer.step(result, input)
-          Reduced === ret ? Reduced.new(ret) : ret
+          @n -= 1
+          if @n == -1
+            Reduced.new(result)
+          else
+            @reducer.step(result, input)
+          end
         end
       end
 
-      def step(result, input)
-        Transducers.transduce(PreservingReduced.new, @reducer, result, input)
+      def initialize(n)
+        @n = n
+      end
+
+      def apply(reducer)
+        reducer_class.new(reducer, @n)
       end
     end
-  end
 
-  # @api private
-  class ComposedTransducer
-    def initialize(*transducers)
-      @transducers = transducers
+    # @return [Transducer]
+    define_transducer_class "dropping" do
+      define_reducer_class do
+        def initialize(reducer, n)
+          super(reducer)
+          @n = n
+        end
+
+        def step(result, input)
+          @n -= 1
+
+          if @n <= -1
+            @reducer.step(result, input)
+          else
+            result
+          end
+        end
+      end
+
+      def initialize(n)
+        @n = n
+      end
+
+      def apply(reducer)
+        reducer_class.new(reducer, @n)
+      end
     end
 
-    def apply(reducer)
-      @transducers.reverse.reduce(reducer) {|r,t| t.apply(r)}
+    # @return [Transducer]
+    define_transducer_class "cat" do
+      define_reducer_class do
+        class PreservingReduced
+          def apply(reducer)
+            @reducer = reducer
+          end
+
+          def step(result, input)
+            ret = @reducer.step(result, input)
+            Reduced === ret ? Reduced.new(ret) : ret
+          end
+        end
+
+        def step(result, input)
+          Transducers.transduce(PreservingReduced.new, @reducer, result, input)
+        end
+      end
+    end
+
+    # @api private
+    class ComposedTransducer
+      def initialize(*transducers)
+        @transducers = transducers
+      end
+
+      def apply(reducer)
+        @transducers.reverse.reduce(reducer) {|r,t| t.apply(r)}
+      end
+    end
+
+    # @return [Transducer]
+    def compose(*transducers)
+      ComposedTransducer.new(*transducers)
+    end
+
+    # @return [Transducer]
+    def mapcat(process=nil, &b)
+      compose(mapping(process, &b), cat)
     end
   end
-
-  # @return [Transducer]
-  def compose(*transducers)
-    ComposedTransducer.new(*transducers)
-  end
-
-  # @return [Transducer]
-  def mapcat(process=nil, &b)
-    compose(mapping(process, &b), cat)
-  end
-
-  module_function :compose, :mapcat
 end
