@@ -109,6 +109,16 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a drop_while transducer" do
+    expect((6..20).to_a) do
+      T.transduce(T.drop_while {|n| n < 6}, :<<, [], 1.upto(20))
+    end
+
+    expect([2,3]) do
+      T.transduce(T.drop_while {|n| n.odd?}, :<<, [], [1,1,1,2,3])
+    end
+  end
+
   it "creates a cat transducer" do
     expect([1,2,3,4]) do
       T.transduce(T.cat, :<<, [], [[1,2],[3,4]])

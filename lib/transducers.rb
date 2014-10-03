@@ -213,7 +213,6 @@ module Transducers
       end
     end
 
-
     # @return [Transducer]
     define_transducer_class "take_while" do
       define_reducer_class do
@@ -248,6 +247,21 @@ module Transducers
 
       def apply(reducer)
         reducer_class.new(reducer, @n)
+      end
+    end
+
+    # @return [Transducer]
+    define_transducer_class "drop_while" do
+      define_reducer_class do
+        def initalize(*)
+          super
+          @done_dropping = false
+        end
+
+        def step(result, input)
+          @done_dropping ||= !@handler.process(input)
+          @done_dropping ? @reducer.step(result, input) : result
+        end
       end
     end
 

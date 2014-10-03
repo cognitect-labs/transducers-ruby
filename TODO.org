@@ -1,5 +1,5 @@
 * completion
-* TODO: implement [8/17]
+* TODO: implement [9/17]
 - [X] map
 - [X] filter
 - [X] cat
@@ -8,7 +8,7 @@
 - [X] remove
 - [X] take-while
 - [X] drop
-- [ ] drop-while
+- [X] drop-while
 - [ ] take-nth
 - [ ] replace
 - [ ] keep
