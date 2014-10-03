@@ -69,7 +69,7 @@ module Transducers
   end
 
   # @api private
-  class BaseReducer
+  class WrappingReducer
     class BlockHandler
       def initialize(block)
         @block = block
@@ -111,66 +111,82 @@ module Transducers
   end
 
   class BaseTransducer
+    class << self
+      attr_reader :reducer_class
+
+      def define_reducer_class(&block)
+        @reducer_class = Class.new(WrappingReducer)
+        @reducer_class.class_eval(&block)
+      end
+    end
+
     def initialize(handler, &block)
       @handler = handler
       @block = block
     end
+
+    def reducer_class
+      self.class.reducer_class
+    end
   end
 
-  # @api private
-  class MappingTransducer < BaseTransducer
-    class MappingReducer < BaseReducer
+  def self.define_transducer_class(name, &block)
+    t = Class.new(BaseTransducer)
+    t.class_eval(&block)
+    unless t.instance_methods.include? :apply
+      t.class_eval do
+        define_method :apply do |reducer|
+          reducer_class.new(reducer, @handler, &@block)
+        end
+      end
+    end
+
+    Transducers.send(:define_method, name) do |handler=nil, &b|
+      t.new(handler, &b)
+    end
+
+    Transducers.send(:module_function, name)
+  end
+
+  # @return [Transducer]
+  define_transducer_class "mapping" do
+    define_reducer_class do
       def step(result, input)
         @reducer.step(result, @handler.process(input))
       end
     end
+  end
 
-    def apply(reducer)
-      MappingReducer.new(reducer, @handler, &@block)
+  # @return [Transducer]
+  define_transducer_class "taking_while" do
+    define_reducer_class do
+      def step(result, input)
+        @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
+      end
     end
   end
 
-  def mapping(process=nil, &block)
-    MappingTransducer.new(process, &block)
-  end
-
-  # @api private
-  class FilteringTransducer < BaseTransducer
-    class FilteringReducer < BaseReducer
+  # @return [Transducer]
+  define_transducer_class "filtering" do
+    define_reducer_class do
       def step(result, input)
         @handler.process(input) ? @reducer.step(result, input) : result
       end
     end
-
-    def apply(reducer)
-      FilteringReducer.new(reducer, @handler, &@block)
-    end
   end
 
-  def filtering(pred=nil, &block)
-    FilteringTransducer.new(pred, &block)
-  end
-
-  # @api private
-  class RemovingTransducer < BaseTransducer
-    class RemovingReducer < BaseReducer
+  # @return [Transducer]
+  define_transducer_class "removing" do
+    define_reducer_class do
       def step(result, input)
         @handler.process(input) ? result : @reducer.step(result, input)
       end
     end
-
-    def apply(reducer)
-      RemovingReducer.new(reducer, @handler, &@block)
-    end
   end
 
-  def removing(pred=nil, &block)
-    RemovingTransducer.new(pred, &block)
-  end
-
-  # @api private
-  class TakingTransducer
-    class TakingReducer < BaseReducer
+  # @return [Transducer]
+  define_transducer_class "taking" do
+    define_reducer_class do
       def initialize(reducer, n)
         super(reducer)
         @n = n
@@ -191,33 +207,13 @@ module Transducers
     end
 
     def apply(reducer)
-      TakingReducer.new(reducer, @n)
+      reducer_class.new(reducer, @n)
     end
   end
 
-  def taking(n)
-    TakingTransducer.new(n)
-  end
-
-  # @api private
-  class TakingWhileTransducer < BaseTransducer
-    class TakingWhileReducer < BaseReducer
-      def step(result, input)
-        @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
-      end
-    end
-
-    def apply(reducer)
-      TakingWhileReducer.new(reducer, @handler, &@block)
-    end
-  end
-
-  def taking_while(pred=nil, &block)
-    TakingWhileTransducer.new(pred, &block)
-  end
-
-  class DroppingTransducer
-    class Reducer < BaseReducer
+  # @return [Transducer]
+  define_transducer_class "dropping" do
+    define_reducer_class do
       def initialize(reducer, n)
         super(reducer)
         @n = n
@@ -225,6 +221,7 @@ module Transducers
 
       def step(result, input)
         @n -= 1
+
         if @n <= -1
           @reducer.step(result, input)
         else
@@ -238,41 +235,28 @@ module Transducers
     end
 
     def apply(reducer)
-      Reducer.new(reducer, @n)
+      reducer_class.new(reducer, @n)
     end
   end
 
-  def dropping(n)
-    DroppingTransducer.new(n)
-  end
+  # @return [Transducer]
+  define_transducer_class "cat" do
+    define_reducer_class do
+      class PreservingReduced
+        def apply(reducer)
+          @reducer = reducer
+        end
 
-  # @api private
-  class PreservingReduced
-    def apply(reducer)
-      @reducer = reducer
-    end
+        def step(result, input)
+          ret = @reducer.step(result, input)
+          Reduced === ret ? Reduced.new(ret) : ret
+        end
+      end
 
-    def step(result, input)
-      ret = @reducer.step(result, input)
-      Reduced === ret ? Reduced.new(ret) : ret
-    end
-  end
-
-  # @api private
-  class CattingTransducer
-    class CattingReducer < BaseReducer
       def step(result, input)
         Transducers.transduce(PreservingReduced.new, @reducer, result, input)
       end
     end
-
-    def apply(reducer)
-      CattingReducer.new(reducer)
-    end
-  end
-
-  def cat
-    CattingTransducer.new
   end
 
   # @api private
@@ -286,13 +270,15 @@ module Transducers
     end
   end
 
+  # @return [Transducer]
   def compose(*transducers)
     ComposedTransducer.new(*transducers)
   end
 
+  # @return [Transducer]
   def mapcat(process=nil, &b)
     compose(mapping(process, &b), cat)
   end
 
-  module_function :mapping, :filtering, :taking, :cat, :compose, :mapcat, :dropping, :taking_while, :removing
+  module_function :compose, :mapcat
 end
