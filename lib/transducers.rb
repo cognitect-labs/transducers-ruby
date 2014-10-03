@@ -152,6 +152,23 @@ module Transducers
   end
 
   # @api private
+  class RemovingTransducer < BaseTransducer
+    class RemovingReducer < BaseReducer
+      def step(result, input)
+        @handler.process(input) ? result : @reducer.step(result, input)
+      end
+    end
+
+    def apply(reducer)
+      RemovingReducer.new(reducer, @handler, &@block)
+    end
+  end
+
+  def removing(pred=nil, &block)
+    RemovingTransducer.new(pred, &block)
+  end
+
+  # @api private
   class TakingTransducer
     class TakingReducer < BaseReducer
       def initialize(reducer, n)
@@ -203,7 +220,7 @@ module Transducers
       @n = n
     end
 
-    def reducer(reducer)
+    def apply(reducer)
       Reducer.new(reducer, @n)
     end
   end

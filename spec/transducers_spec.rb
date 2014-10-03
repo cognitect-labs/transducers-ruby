@@ -66,6 +66,37 @@ RSpec.describe Transducers do
     end
   end
 
+
+
+  it "creates a removing transducer with a Symbol" do
+    expect([1,3,5]) do
+      transduce(removing(:even?), :<<, [], [1,2,3,4,5])
+    end
+  end
+
+  it "creates a removing transducer with a Block" do
+    expect([1,3,5]) do
+      transduce(removing {|x| x.even?}, :<<, [], [1,2,3,4,5])
+    end
+  end
+
+  it "creates a removing transducer with an object that implements process" do
+    expect([1,3,5]) do
+      even = Class.new do
+        def process(n) n.even? end
+      end.new
+      transduce(removing(even), :<<, [], [1,2,3,4,5])
+    end
+  end
+
+
+
+
+
+
+
+
+
   it "creates a taking transducer" do
     expect([1,2,3,4,5]) do
       transduce(taking(5), :<<, [], 1.upto(20))
