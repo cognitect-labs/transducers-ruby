@@ -17,7 +17,7 @@ require 'transducers'
 require 'benchmark'
 
 class Inc
-  def xform(n) n + 1 end
+  def process(n) n + 1 end
 end
 
 mapping_inc         = Transducers.mapping(Inc.new)

@@ -35,9 +35,9 @@ RSpec.describe Transducers do
     end
   end
 
-  it "creates a mapping transducer with an object that implements xform" do
+  it "creates a mapping transducer with an object that implements process" do
     inc = Class.new do
-      def xform(n) n + 1 end
+      def process(n) n + 1 end
     end.new
 
     expect([2,3,4]) do
@@ -57,10 +57,10 @@ RSpec.describe Transducers do
     end
   end
 
-  it "creates a filtering transducer with an object that implements pred" do
+  it "creates a filtering transducer with an object that implements process" do
     expect([2,4]) do
       even = Class.new do
-        def pred(n) n.even? end
+        def process(n) n.even? end
       end.new
       transduce(filtering(even), :<<, [], [1,2,3,4,5])
     end
@@ -80,7 +80,7 @@ RSpec.describe Transducers do
 
   it "creates a mapcat transducer with an object" do
     range_builder = Class.new do
-      def xform(n) 0...n; end
+      def process(n) 0...n; end
     end.new
 
     expect([0,0,1,0,1,2]) do

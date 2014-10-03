@@ -84,8 +84,35 @@ module Transducers
 
   # @api private
   class BaseReducer
-    def initialize(reducer)
+    class BlockHandler
+      def initialize(block)
+        @block = block
+      end
+
+      def process(input)
+        @block.call(input)
+      end
+    end
+
+    class MethodHandler
+      def initialize(method)
+        @method = method
+      end
+
+      def process(input)
+        input.send @method
+      end
+    end
+
+    def initialize(reducer, process=nil, &block)
       @reducer = reducer
+      @handler = if block
+                   BlockHandler.new(block)
+                 elsif Symbol === process
+                   MethodHandler.new(process)
+                 else
+                   process
+                 end
     end
 
     def init()
@@ -100,100 +127,40 @@ module Transducers
   # @api private
   class MappingTransducer
     class MappingReducer < BaseReducer
-      def initialize(reducer, xform)
-        super(reducer)
-        @xform = xform
-      end
-
       def step(result, input)
-        @reducer.step(result, @xform.xform(input))
+        @reducer.step(result, @handler.process(input))
       end
     end
 
-    class BlockXForm
-      def initialize(block)
-        @block = block
-      end
-
-      def xform(input)
-        @block.call(input)
-      end
-    end
-
-    class MethodXForm
-      def initialize(method)
-        @method = method
-      end
-
-      def xform(input)
-        input.send @method
-      end
-    end
-
-    def initialize(xform, &block)
-      @xform = if block
-                 BlockXForm.new(block)
-               elsif Symbol === xform
-                 MethodXForm.new(xform)
-               else
-                 xform
-               end
+    def initialize(handler, &block)
+      @handler = handler
+      @block = block
     end
 
     def apply(reducer)
-      MappingReducer.new(reducer, @xform)
+      MappingReducer.new(reducer, @handler, &@block)
     end
   end
 
-  def mapping(xform=nil, &block)
-    MappingTransducer.new(xform, &block)
+  def mapping(process=nil, &block)
+    MappingTransducer.new(process, &block)
   end
 
   # @api private
   class FilteringTransducer
     class FilteringReducer < BaseReducer
-      def initialize(reducer, pred)
-        super(reducer)
-        @pred = pred
-      end
-
       def step(result, input)
-        @pred.pred(input) ? @reducer.step(result, input) : result
+        @handler.process(input) ? @reducer.step(result, input) : result
       end
     end
 
-    class BlockPred
-      def initialize(block)
-        @block = block
-      end
-
-      def pred(input)
-        @block.call(input)
-      end
-    end
-
-    class MethodPred
-      def initialize(method)
-        @method = method
-      end
-
-      def pred(input)
-        input.send @method
-      end
-    end
-
-    def initialize(pred, &block)
-      @pred = if block
-                 BlockPred.new(block)
-               elsif Symbol === pred
-                 MethodPred.new(pred)
-               else
-                 pred
-               end
+    def initialize(handler, &block)
+      @handler = handler
+      @block = block
     end
 
     def apply(reducer)
-      FilteringReducer.new(reducer, @pred)
+      FilteringReducer.new(reducer, @handler, &@block)
     end
   end
 
@@ -276,8 +243,8 @@ module Transducers
     ComposedTransducer.new(*transducers)
   end
 
-  def mapcat(xform=nil, &b)
-    compose(mapping(xform, &b), cat)
+  def mapcat(process=nil, &b)
+    compose(mapping(process, &b), cat)
   end
 
   module_function :mapping, :filtering, :taking, :cat, :compose, :mapcat
