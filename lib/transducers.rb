@@ -156,43 +156,44 @@ module Transducers
         super(reducer)
         @pred = pred
       end
-    end
 
-    class BlockReducer < FilteringReducer
-      def step(result, input)
-        @pred.call(input) ? @reducer.step(result, input) : result
-      end
-    end
-
-    class MethodReducer < FilteringReducer
-      def step(result, input)
-        input.send(@pred) ? @reducer.step(result, input) : result
-      end
-    end
-
-    class ObjectReducer < FilteringReducer
       def step(result, input)
         @pred.pred(input) ? @reducer.step(result, input) : result
       end
     end
 
-    def initialize(pred, &block)
-      if block
+    class BlockPred
+      def initialize(block)
         @block = block
-        (class << self; self; end).class_eval do
-          def apply(reducer) BlockReducer.new(reducer, @block) end
-        end
-      elsif Symbol === pred
-        @pred = pred
-        (class << self; self; end).class_eval do
-          def apply(reducer) MethodReducer.new(reducer, @pred) end
-        end
-      else
-        @pred = pred
-        (class << self; self; end).class_eval do
-          def apply(reducer) ObjectReducer.new(reducer, @pred) end
-        end
       end
+
+      def pred(input)
+        @block.call(input)
+      end
+    end
+
+    class MethodPred
+      def initialize(method)
+        @method = method
+      end
+
+      def pred(input)
+        input.send @method
+      end
+    end
+
+    def initialize(pred, &block)
+      @pred = if block
+                 BlockPred.new(block)
+               elsif Symbol === pred
+                 MethodPred.new(pred)
+               else
+                 pred
+               end
+    end
+
+    def apply(reducer)
+      FilteringReducer.new(reducer, @pred)
     end
   end
 
