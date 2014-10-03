@@ -124,17 +124,19 @@ module Transducers
     end
   end
 
+  class BaseTransducer
+    def initialize(handler, &block)
+      @handler = handler
+      @block = block
+    end
+  end
+
   # @api private
-  class MappingTransducer
+  class MappingTransducer < BaseTransducer
     class MappingReducer < BaseReducer
       def step(result, input)
         @reducer.step(result, @handler.process(input))
       end
-    end
-
-    def initialize(handler, &block)
-      @handler = handler
-      @block = block
     end
 
     def apply(reducer)
@@ -147,16 +149,11 @@ module Transducers
   end
 
   # @api private
-  class FilteringTransducer
+  class FilteringTransducer < BaseTransducer
     class FilteringReducer < BaseReducer
       def step(result, input)
         @handler.process(input) ? @reducer.step(result, input) : result
       end
-    end
-
-    def initialize(handler, &block)
-      @handler = handler
-      @block = block
     end
 
     def apply(reducer)
