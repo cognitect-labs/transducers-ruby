@@ -282,6 +282,20 @@ module Transducers
     end
 
     # @return [Transducer]
+    define_transducer_class "keep" do
+      define_reducer_class do
+        def step(result, input)
+          x = @handler.process(input)
+          if x.nil?
+            result
+          else
+            @reducer.step(result, x)
+          end
+        end
+      end
+    end
+
+    # @return [Transducer]
     define_transducer_class "drop" do
       define_reducer_class do
         def initialize(reducer, n)

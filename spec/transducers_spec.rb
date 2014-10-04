@@ -143,6 +143,16 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a keep transducer" do
+    expect([false, true, false, true, false]) do
+      T.transduce(T.keep(:even?), :<<, [], 1..5)
+    end
+
+    expect([1,3,5,7,9]) do
+      T.transduce(T.keep {|n| n if n.odd?}, :<<, [], 0..9)
+    end
+  end
+
   it "creates a cat transducer" do
     expect([1,2,3,4]) do
       T.transduce(T.cat, :<<, [], [[1,2],[3,4]])
