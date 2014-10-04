@@ -160,7 +160,7 @@ module Transducers
 
 
     # @return [Transducer]
-    define_transducer_class "map" do
+    define_transducer_class :map do
       define_reducer_class do
         def step(result, input)
           @reducer.step(result, @handler.process(input))
@@ -169,7 +169,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "filter" do
+    define_transducer_class :filter do
       define_reducer_class do
         def step(result, input)
           @handler.process(input) ? @reducer.step(result, input) : result
@@ -178,7 +178,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "remove" do
+    define_transducer_class :remove do
       define_reducer_class do
         def step(result, input)
           @handler.process(input) ? result : @reducer.step(result, input)
@@ -187,7 +187,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "take" do
+    define_transducer_class :take do
       define_reducer_class do
         def initialize(reducer, n)
           super(reducer)
@@ -214,7 +214,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "take_while" do
+    define_transducer_class :take_while do
       define_reducer_class do
         def step(result, input)
           @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
@@ -223,7 +223,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "take_nth" do
+    define_transducer_class :take_nth do
       define_reducer_class do
         def initialize(reducer, n)
           super(reducer)
@@ -251,7 +251,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "replace" do
+    define_transducer_class :replace do
       define_reducer_class do
         def initialize(reducer, smap)
           super(reducer)
@@ -282,7 +282,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "keep" do
+    define_transducer_class :keep do
       define_reducer_class do
         def step(result, input)
           x = @handler.process(input)
@@ -296,7 +296,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "keep_indexed" do
+    define_transducer_class :keep_indexed do
       define_reducer_class do
         def initialize(*)
           super
@@ -316,7 +316,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "drop" do
+    define_transducer_class :drop do
       define_reducer_class do
         def initialize(reducer, n)
           super(reducer)
@@ -344,7 +344,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "drop_while" do
+    define_transducer_class :drop_while do
       define_reducer_class do
         def initalize(*)
           super
@@ -359,7 +359,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "dedupe" do
+    define_transducer_class :dedupe do
       define_reducer_class do
         def initialize(*)
           super
@@ -381,7 +381,7 @@ module Transducers
     end
 
     # @return [Transducer]
-    define_transducer_class "cat" do
+    define_transducer_class :cat do
       define_reducer_class do
         def step(result, input)
           Transducers.transduce(PreservingReduced.new, @reducer, result, input)
