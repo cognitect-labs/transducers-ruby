@@ -68,8 +68,8 @@ module Transducers
         @block = block
       end
 
-      def process(input)
-        @block.call(input)
+      def process(input, *extra)
+        @block.call(input, *extra)
       end
     end
 
@@ -286,6 +286,26 @@ module Transducers
       define_reducer_class do
         def step(result, input)
           x = @handler.process(input)
+          if x.nil?
+            result
+          else
+            @reducer.step(result, x)
+          end
+        end
+      end
+    end
+
+    # @return [Transducer]
+    define_transducer_class "keep_indexed" do
+      define_reducer_class do
+        def initialize(*)
+          super
+          @index = -1
+        end
+
+        def step(result, input)
+          @index += 1
+          x = @handler.process(@index, input)
           if x.nil?
             result
           else

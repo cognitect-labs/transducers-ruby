@@ -153,6 +153,25 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a keep_indexed transducer" do
+    expect([:b, :d]) do
+      T.transduce(T.keep_indexed {|i,v| v if i.odd?}, :<<, [], [:a, :b, :c, :d, :e])
+    end
+
+    expect([2,4,5]) do
+      T.transduce(T.keep_indexed {|i,v| i if v > 0}, :<<, [],  [-9, 0, 29, -7, 45, 3, -8])
+    end
+
+    expect([2,4,5]) do
+      handler = Class.new do
+        def process(i,v)
+          i if v > 0
+        end
+      end
+      T.transduce(T.keep_indexed(handler.new), :<<, [],  [-9, 0, 29, -7, 45, 3, -8])
+    end
+  end
+
   it "creates a cat transducer" do
     expect([1,2,3,4]) do
       T.transduce(T.cat, :<<, [], [[1,2],[3,4]])
