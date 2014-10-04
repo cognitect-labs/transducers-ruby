@@ -251,6 +251,37 @@ module Transducers
     end
 
     # @return [Transducer]
+    define_transducer_class "replace" do
+      define_reducer_class do
+        def initialize(reducer, smap)
+          super(reducer)
+          @smap = smap
+        end
+
+        def step(result, input)
+          if @smap.has_key?(input)
+            @reducer.step(result, @smap[input])
+          else
+            @reducer.step(result, input)
+          end
+        end
+      end
+
+      def initialize(smap)
+        @smap = case smap
+                when Hash
+                  smap
+                else
+                  smap.reduce({}) {|h,v| h[h.count] = v; h}
+                end
+      end
+
+      def apply(reducer)
+        reducer_class.new(reducer, @smap)
+      end
+    end
+
+    # @return [Transducer]
     define_transducer_class "drop" do
       define_reducer_class do
         def initialize(reducer, n)
@@ -292,6 +323,7 @@ module Transducers
         end
       end
     end
+
 
     # @return [Transducer]
     define_transducer_class "cat" do

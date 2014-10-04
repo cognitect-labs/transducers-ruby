@@ -133,6 +133,16 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a replace transducer" do
+    expect([:zeroth, :second, :fourth, :zeroth]) do
+      T.transduce(T.replace([:zeroth, :first, :second, :third, :fourth]), :<<, [],  [0, 2, 4, 0])
+    end
+
+    expect([:codes, :zero, :one, :two, :zero]) do
+      T.transduce(T.replace({0 => :zero, 1 => :one, 2 => :two}), :<<, [],  [:codes, 0, 1, 2, 0])
+    end
+  end
+
   it "creates a cat transducer" do
     expect([1,2,3,4]) do
       T.transduce(T.cat, :<<, [], [[1,2],[3,4]])
