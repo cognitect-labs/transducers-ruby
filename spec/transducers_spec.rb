@@ -172,6 +172,12 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a dedupe transducer" do
+    expect([1,2,1,3,4,1,5]) do
+      T.transduce(T.dedupe, :<<, [], [1,2,2,1,1,1,3,4,4,1,1,5])
+    end
+  end
+
   it "creates a cat transducer" do
     expect([1,2,3,4]) do
       T.transduce(T.cat, :<<, [], [[1,2],[3,4]])

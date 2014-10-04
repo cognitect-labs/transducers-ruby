@@ -358,6 +358,27 @@ module Transducers
       end
     end
 
+    # @return [Transducer]
+    define_transducer_class "dedupe" do
+      define_reducer_class do
+        def initialize(*)
+          super
+          @n = -1
+          @prior = nil
+        end
+
+        def step(result, input)
+          @n += 1
+          ret = if @n > 0 && input == @prior
+                  result
+                else
+                  @reducer.step(result, input)
+                end
+          @prior = input
+          ret
+        end
+      end
+    end
 
     # @return [Transducer]
     define_transducer_class "cat" do

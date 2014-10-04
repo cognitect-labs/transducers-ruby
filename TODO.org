@@ -1,5 +1,5 @@
 * completion
-* TODO: implement [13/17]
+* TODO: implement [14/17]
 - [X] map
 - [X] filter
 - [X] cat
@@ -15,5 +15,5 @@
 - [X] keep-indexed
 - [ ] partition-by
 - [ ] partition-all
-- [ ] dedupe
+- [X] dedupe
 - [ ] random-sample
