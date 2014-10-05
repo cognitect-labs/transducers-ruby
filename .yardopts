@@ -1,0 +1,6 @@
+--markup markdown
+--markup-provider redcarpet
+--plugin redcarpet-ext
+-
+CHANGELOG.md
+LICENSE

@@ -12,7 +12,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Transducers are composable algorithmic transformations.
+# Transducers enable composable algorithmic transformations by transforming
+# reducers.
+#
+# A reducer is an object with a +step+ operation that takes a result
+# (so far) and an input and returns a new result. This is similar to
+# the blocks we pass to Ruby's +reduce+ (a.k.a +inject+), and serves a
+# similar role in transducing operation.
+#
+# Each transducer will wrap a reducer in its own reducer, thereby
+# transforming the behavior of the wrapped reducer
+#
+# For example, let's say you want to take a range of numbers, select
+# all the even numbers, double them, and then take the first 5. Here's
+# one way to do that in Ruby:
+#
+# ```ruby
+# (1..100).
+#   select {|n| n.even?}.
+#   map    {|n| n * 2}.
+#   take(5)
+# #=> [4, 8, 12, 16, 20]
+# ```
+#
+# Here's the same process with transducers:
+#
+# ```ruby
+# t = Transducers.compose(
+#       Transducers.filter(:even?),
+#       Transducers.map {|n| n * 2},
+#       Transducers.take(5))
+# Transducers.transduce(t, :<<, [], 1..100)
+# #=> [4, 8, 12, 16, 20]
+# ```
+#
+# The transduce method builds a reducer sending +:<<+ to an initial
+# value of +[]+.  Now that we've defined the transducer as a series of
+# transformations, we can apply it to different contexts, e.g.
+#
+# ```ruby
+# Transducers.transduce(t, :+, 0, 1..100)
+# #=> 60
+# Transducers.transduce(t, :*, 1, 1..100)
+# #=> 122880
+# ```
 module Transducers
   class Reducer
     def initialize(init, sym=nil, &block)
@@ -98,14 +141,14 @@ module Transducers
       end
     end
 
-    def initialize(reducer, process=nil, &block)
+    def initialize(reducer, handler=nil, &block)
       @reducer = reducer
       @handler = if block
                    BlockHandler.new(block)
-                 elsif Symbol === process
-                   MethodHandler.new(process)
+                 elsif Symbol === handler
+                   MethodHandler.new(handler)
                  else
-                   process
+                   handler
                  end
     end
 
@@ -140,6 +183,10 @@ module Transducers
   end
 
   class << self
+    # @overload transduce(transducer, reducer, coll)
+    # @overload transduce(transducer, reducer, init, coll)
+    # @param [Transducer] transducer
+    # @param [Reducer, Symbol, Bock] reducer
     def transduce(transducer, reducer, init=:no_init_provided, coll)
       reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:step)
       reducer = transducer.apply(reducer)
@@ -173,17 +220,26 @@ module Transducers
       Transducers.send(:module_function, name)
     end
 
-
-    # @return [Transducer]
+    # @macro [new] common_transducer
+    #   @return [Transducer]
+    #   @method $1(handler=nil, &block)
+    #   @param [Object, Symbol] handler
+    #     Given an object that responds to +process+, uses it as the
+    #     handler.  Given a +Symbol+, builds a handler whose +process+
+    #     method will send +Symbol+ to its argument.
+    #   @param [Block] block <i>(optional)</i>
+    #     Given a +Block+, builds a handler whose +process+ method will
+    #     call the block with its argument(s).
     define_transducer_class :map do
       define_reducer_class do
+        # Can I doc this?
         def step(result, input)
           @reducer.step(result, @handler.process(input))
         end
       end
     end
 
-    # @return [Transducer]
+    # @macro common_transducer
     define_transducer_class :filter do
       define_reducer_class do
         def step(result, input)
@@ -192,7 +248,7 @@ module Transducers
       end
     end
 
-    # @return [Transducer]
+    # @macro common_transducer
     define_transducer_class :remove do
       define_reducer_class do
         def step(result, input)
@@ -201,6 +257,7 @@ module Transducers
       end
     end
 
+    # @method take(n)
     # @return [Transducer]
     define_transducer_class :take do
       define_reducer_class do
@@ -228,7 +285,7 @@ module Transducers
       end
     end
 
-    # @return [Transducer]
+    # @macro common_transducer
     define_transducer_class :take_while do
       define_reducer_class do
         def step(result, input)
@@ -237,6 +294,7 @@ module Transducers
       end
     end
 
+    # @method take_nth(n)
     # @return [Transducer]
     define_transducer_class :take_nth do
       define_reducer_class do
@@ -265,6 +323,7 @@ module Transducers
       end
     end
 
+    # @method replace(source_map)
     # @return [Transducer]
     define_transducer_class :replace do
       define_reducer_class do
@@ -296,7 +355,7 @@ module Transducers
       end
     end
 
-    # @return [Transducer]
+    # @macro common_transducer
     define_transducer_class :keep do
       define_reducer_class do
         def step(result, input)
@@ -310,7 +369,9 @@ module Transducers
       end
     end
 
-    # @return [Transducer]
+    # @macro common_transducer
+    # @note the handler for this method requires two arguments: the
+    #   index and the input.
     define_transducer_class :keep_indexed do
       define_reducer_class do
         def initialize(*)
@@ -330,6 +391,7 @@ module Transducers
       end
     end
 
+    # @method drop(n)
     # @return [Transducer]
     define_transducer_class :drop do
       define_reducer_class do
@@ -358,7 +420,7 @@ module Transducers
       end
     end
 
-    # @return [Transducer]
+    # @macro common_transducer
     define_transducer_class :drop_while do
       define_reducer_class do
         def initalize(*)
@@ -373,6 +435,7 @@ module Transducers
       end
     end
 
+    # @method dedupe
     # @return [Transducer]
     define_transducer_class :dedupe do
       define_reducer_class do
@@ -395,6 +458,7 @@ module Transducers
       end
     end
 
+    # @method cat
     # @return [Transducer]
     define_transducer_class :cat do
       define_reducer_class do
@@ -421,8 +485,8 @@ module Transducers
     end
 
     # @return [Transducer]
-    def mapcat(process=nil, &b)
-      compose(map(process, &b), cat)
+    def mapcat(handler=nil, &block)
+      compose(map(handler, &block), cat)
     end
   end
 end
