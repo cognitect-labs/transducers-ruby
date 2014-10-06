@@ -264,7 +264,7 @@ module Transducers
         return result.val if Transducers::Reduced === result
         result = reducer.step(result, input)
       end
-      result
+      reducer.complete(result)
     end
 
     def self.define_transducer_class(name, &block)
@@ -521,6 +521,45 @@ module Transducers
                 end
           @prior = input
           ret
+        end
+      end
+    end
+
+    # @method partition_by
+    # @return [Transducer]
+    define_transducer_class :partition_by do
+      define_reducer_class do
+        def initialize(*)
+          super
+          @a = []
+          @prev_val = :no_value_for_partition_by_yet
+        end
+
+        def complete(result)
+          result = if @a.empty?
+                     result
+                   else
+                     a = @a.dup
+                     @a.clear
+                     @reducer.step(result, a)
+                   end
+          @reducer.complete(result)
+        end
+
+        def step(result, input)
+          prev_val = @prev_val
+          val = @handler.process(input)
+          @prev_val = val
+          if val == prev_val || prev_val == :no_value_for_partition_by_yet
+            @a << input
+            result
+          else
+            a = @a.dup
+            @a.clear
+            ret = @reducer.step(result, a)
+            @a << input unless (Reduced === ret)
+            ret
+          end
         end
       end
     end

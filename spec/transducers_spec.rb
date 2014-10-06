@@ -200,6 +200,16 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a partition_by transducer" do
+    expect([[1,2],[3],[4,5]]) do
+      T.transduce(T.partition_by {|n| n == 3}, :<<, [], 1..5)
+    end
+
+    expect([["A"],["B","B"],["A"]]) do
+      T.transduce(T.partition_by {|n|n}, :<<, [], "ABBA")
+    end
+  end
+
   it "transduces a String" do
     expect("THIS") do
       T.transduce(T.map {|c| c.upcase},
