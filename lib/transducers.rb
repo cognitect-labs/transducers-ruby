@@ -12,20 +12,86 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Transducers enable composable algorithmic transformations by transforming
-# reducers.
+# Transducers are composable algorithmic transformations. See
+# http://clojure.org/transducers before reading on.
 #
-# A reducer is an object with a +step+ operation that takes a result
+# ## Terminology
+#
+# We need to expand the terminology a bit in order to map the concepts
+# described on http://clojure.org/transducers to an OO language like
+# Ruby.
+#
+# A _reducer_ is an object with a `step` method that takes a result
 # (so far) and an input and returns a new result. This is similar to
-# the blocks we pass to Ruby's +reduce+ (a.k.a +inject+), and serves a
-# similar role in transducing operation.
+# the blocks we pass to Ruby's `reduce` (a.k.a `inject`), and serves a
+# similar role in _transducing process_.
 #
-# Each transducer will wrap a reducer in its own reducer, thereby
-# transforming the behavior of the wrapped reducer
+# A _handler_ is an object with a `process` method that a reducer uses
+# to process input. In a `map` operation, this would transform the
+# input, and in a `filter` operation it would act as a predicate.
 #
-# For example, let's say you want to take a range of numbers, select
-# all the even numbers, double them, and then take the first 5. Here's
-# one way to do that in Ruby:
+# A _transducer_ is an object that transforms a reducer by adding
+# additional processing for each element in a collection of inputs.
+#
+# A _transducing process_ is invoked by calling
+# `Transducers.transduce` with a transducer, a reducer, an optional
+# initial value, and an input collection.
+#
+# Because Ruby doesn't come with free-floating handlers (e.g. Clojure's
+# `inc` function) or reducing functions (e.g. Clojure's `conj`), we have
+# to build these things ourselves.
+#
+# ## Examples
+#
+# ```ruby
+# # handler
+# inc = Class.new do
+#         def process(input) input += 1 end
+#       end.new
+#
+# # reducer
+# appender = Class.new do
+#              def step(result, input) result << input end
+#            end.new
+#
+# # transducing process
+# Transducers.transduce(Transducers.map(inc), appender, [], 0..9)
+# #=> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+# ```
+#
+# You can pass a `Symbol` or a `Block` to transducer constructors
+# (`Transducers.map` in this example), so the above can be achieved
+# more easily e.g.
+#
+# ```
+# Transducers.transduce(Transducers.map(:succ),   appender, [], 0..9)
+# #=> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+# Transducers.transduce(Transducers.map {|n|n+1}, appender, [], 0..9)
+# #=> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+# ```
+#
+# You can omit the initial value if the reducer (`appender` in this
+# example) provides one:
+#
+# ```
+# def appender.init() [] end
+# Transducers.transduce(Transducers.map {|n|n+1}, appender, 0..9)
+# #=> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+# ```
+#
+# You can also just pass a `Symbol` and an initial value instead of a
+# reducer object, and the `transduce` method will build one for you.
+#
+# ```
+# Transducers.transduce(Transducers.map {|n|n+1}, :<<, [], 0..9)
+# #=> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+# ```
+#
+# ## Composition
+#
+# Imagine that you want to take a range of numbers, select all the even
+# ones, double them, and then take the first 5. Here's one way to
+# do that in Ruby:
 #
 # ```ruby
 # (1..100).
@@ -46,8 +112,7 @@
 # #=> [4, 8, 12, 16, 20]
 # ```
 #
-# The transduce method builds a reducer sending +:<<+ to an initial
-# value of +[]+.  Now that we've defined the transducer as a series of
+# Now that we've defined the transducer as a series of
 # transformations, we can apply it to different contexts, e.g.
 #
 # ```ruby
@@ -230,6 +295,8 @@ module Transducers
     #   @param [Block] block <i>(optional)</i>
     #     Given a +Block+, builds a handler whose +process+ method will
     #     call the block with its argument(s).
+    # Returns a transducer that adds a map transformation to the
+    # reducer stack.
     define_transducer_class :map do
       define_reducer_class do
         # Can I doc this?
