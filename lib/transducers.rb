@@ -443,7 +443,6 @@ module Transducers
 
         def step(result, input)
           @n -= 1
-
           if @n <= -1
             @reducer.step(result, input)
           else
@@ -482,17 +481,11 @@ module Transducers
       define_reducer_class do
         def initialize(*)
           super
-          @n = -1
-          @prior = nil
+          @prior = :no_value_provided_for_transducer
         end
 
         def step(result, input)
-          @n += 1
-          ret = if @n > 0 && input == @prior
-                  result
-                else
-                  @reducer.step(result, input)
-                end
+          ret = input == @prior ? result : @reducer.step(result, input)
           @prior = input
           ret
         end
@@ -506,7 +499,7 @@ module Transducers
         def initialize(*)
           super
           @a = []
-          @prev_val = :no_value_for_partition_by_yet
+          @prev_val = :no_value_provided_for_transducer
         end
 
         def complete(result)
@@ -524,7 +517,7 @@ module Transducers
           prev_val = @prev_val
           val = @handler.process(input)
           @prev_val = val
-          if val == prev_val || prev_val == :no_value_for_partition_by_yet
+          if val == prev_val || prev_val == :no_value_provided_for_transducer
             @a << input
             result
           else
