@@ -312,11 +312,8 @@ module Transducers
 
         def step(result, input)
           @n -= 1
-          if @n == -1
-            Reduced.new(result)
-          else
-            @reducer.step(result, input)
-          end
+          ret = @reducer.step(result, input)
+          @n > 0 ? ret : Reduced.new(ret)
         end
       end
 
