@@ -170,32 +170,6 @@ module Transducers
   end
 
   class WrappingReducer
-    class BlockHandler
-      def initialize(block)
-        @block = block
-        # Define the process method based on the block's arity.  It's
-        # more efficient to do this once when this handler is
-        # initialized than to handle varargs (possibly multiple times)
-        # for each input in a transduce process.
-        (class << self; self; end).class_eval do
-          case block.arity
-          when 1
-            def process(input)
-              @block.call(input)
-            end
-          when 2
-            def process(a,b)
-              @block.call(a,b)
-            end
-          else
-            def process(a, b, *etc)
-              @block.call(a, b, *etc)
-            end
-          end
-        end
-      end
-    end
-
     class MethodHandler
       def initialize(method)
         @method = method
@@ -209,7 +183,10 @@ module Transducers
     def initialize(reducer, handler=nil, &block)
       @reducer = reducer
       @handler = if block
-                   BlockHandler.new(block)
+                   block.singleton_class.class_eval do
+                     alias process call
+                   end
+                   block
                  elsif Symbol === handler
                    MethodHandler.new(handler)
                  else
