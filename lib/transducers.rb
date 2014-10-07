@@ -387,7 +387,7 @@ module Transducers
                 when Hash
                   smap
                 else
-                  smap.reduce({}) {|h,v| h[h.count] = v; h}
+                  (0...smap.size).zip(smap).to_h
                 end
       end
 
