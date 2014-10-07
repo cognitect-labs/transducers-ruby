@@ -401,11 +401,7 @@ module Transducers
       define_reducer_class do
         def step(result, input)
           x = @handler.process(input)
-          if x.nil?
-            result
-          else
-            @reducer.step(result, x)
-          end
+          x.nil? ? result : @reducer.step(result, x)
         end
       end
     end
@@ -423,11 +419,7 @@ module Transducers
         def step(result, input)
           @index += 1
           x = @handler.process(@index, input)
-          if x.nil?
-            result
-          else
-            @reducer.step(result, x)
-          end
+          x.nil? ? result : @reducer.step(result, x)
         end
       end
     end
@@ -443,11 +435,7 @@ module Transducers
 
         def step(result, input)
           @n -= 1
-          if @n <= -1
-            @reducer.step(result, input)
-          else
-            result
-          end
+          @n <= -1 ? @reducer.step(result, input) : result
         end
       end
 
