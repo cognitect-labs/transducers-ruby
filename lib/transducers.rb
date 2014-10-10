@@ -236,8 +236,9 @@ module Transducers
           when String     then :each_char
           end
       coll.send(m) do |input|
-        return result.val if Transducers::Reduced === result
         result = reducer.step(result, input)
+        return result.val if Transducers::Reduced === result
+        result
       end
       reducer.complete(result)
     end
