@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = "transducers"
-  spec.version       = "0.0.dev"
+  spec.version       = "0.4.dev"
   spec.authors       = ["David Chelimsky"]
   spec.email         = ["dchelimsky@cognitect.com"]
   spec.summary       = %q{Transducers for Ruby}
