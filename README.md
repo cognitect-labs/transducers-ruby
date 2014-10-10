@@ -14,10 +14,12 @@ Also see the introductory [blog post](http://blog.cognitect.com/blog/2014/8/6/tr
 
 ## Usage
 
-    require 'transducers'
-    T = Transducers
-    T.transduce(T.compose(T.map(:succ), T.filter(:even?)), :<<, [], 0..9)
-    # => [2, 4, 6, 8, 10]
+```ruby
+require 'transducers'
+T = Transducers
+T.transduce(T.compose(T.map(:succ), T.filter(:even?)), :<<, [], 0..9)
+# => [2, 4, 6, 8, 10]
+```
 
 See [the documentation](http://rubydoc.info/gems/transducers/frames/) for more detail.
 
