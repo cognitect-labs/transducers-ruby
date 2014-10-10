@@ -150,6 +150,7 @@ module Transducers
     end
   end
 
+  # @api private
   class Reduced
     attr_reader :val
 
@@ -158,6 +159,7 @@ module Transducers
     end
   end
 
+  # @api private
   class PreservingReduced
     def apply(reducer)
       @reducer = reducer
@@ -563,6 +565,7 @@ module Transducers
       end
     end
 
+    # @api private
     class RandomSampleHandler
       def initialize(prob)
         @prob = prob
