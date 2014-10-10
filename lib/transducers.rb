@@ -231,14 +231,19 @@ module Transducers
       reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:step)
       reducer = transducer.apply(reducer)
       result = init == :no_init_provided ? reducer.init : init
-      m = case coll
-          when Enumerable then :each
-          when String     then :each_char
-          end
-      coll.send(m) do |input|
-        result = reducer.step(result, input)
-        return result.val if Transducers::Reduced === result
-        result
+      case coll
+      when Enumerable
+        coll.each do |input|
+          result = reducer.step(result, input)
+          return result.val if Transducers::Reduced === result
+          result
+        end
+      when String
+        coll.each_char do |input|
+          result = reducer.step(result, input)
+          return result.val if Transducers::Reduced === result
+          result
+        end
       end
       reducer.complete(result)
     end
