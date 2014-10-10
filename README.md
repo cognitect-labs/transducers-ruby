@@ -8,22 +8,18 @@ Also see the introductory [blog post](http://blog.cognitect.com/blog/2014/8/6/tr
 
     gem install transducers
 
-Or, for the latest:
+## Documentation
 
-    git clone https://github.com/cognitect-labs/transducers-ruby.git
-    cd transducers-ruby
-    bundle
-    rake install
+[http://rubydoc.info/gems/transducers/frames/](http://rubydoc.info/gems/transducers/frames/)
 
-# Usage
+## Usage
 
     require 'transducers'
     T = Transducers
     T.transduce(T.compose(T.map(:succ), T.filter(:even?)), :<<, [], 0..9)
     # => [2, 4, 6, 8, 10]
 
-See [http://rubydoc.info/github/cognitect-labs/transducers-ruby/frames](http://rubydoc.info/github/cognitect-labs/transducers-ruby/frames)
-for more detail.
+See [the documentation](http://rubydoc.info/gems/transducers/frames/) for more detail.
 
 ## Contributing
 
