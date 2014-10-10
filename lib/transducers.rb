@@ -183,9 +183,7 @@ module Transducers
     def initialize(reducer, handler=nil, &block)
       @reducer = reducer
       @handler = if block
-                   block.singleton_class.class_eval do
-                     alias process call
-                   end
+                   block.singleton_class.send(:alias_method, :process, :call)
                    block
                  elsif Symbol === handler
                    MethodHandler.new(handler)
