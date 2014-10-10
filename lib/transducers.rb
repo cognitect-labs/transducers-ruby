@@ -26,7 +26,7 @@
 # the blocks we pass to Ruby's `reduce` (a.k.a `inject`), and serves a
 # similar role in _transducing process_.
 #
-# A _handler_ is an object with a `process` method that a reducer uses
+# A _handler_ is an object with a `call` method that a reducer uses
 # to process input. In a `map` operation, this would transform the
 # input, and in a `filter` operation it would act as a predicate.
 #
@@ -46,7 +46,7 @@
 # ```ruby
 # # handler
 # inc = Class.new do
-#         def process(input) input += 1 end
+#         def call(input) input += 1 end
 #       end.new
 #
 # # reducer
@@ -175,7 +175,7 @@ module Transducers
         @method = method
       end
 
-      def process(input)
+      def call(input)
         input.send @method
       end
     end
@@ -183,7 +183,6 @@ module Transducers
     def initialize(reducer, handler=nil, &block)
       @reducer = reducer
       @handler = if block
-                   block.singleton_class.send(:alias_method, :process, :call)
                    block
                  elsif Symbol === handler
                    MethodHandler.new(handler)
@@ -282,7 +281,7 @@ module Transducers
       define_reducer_class do
         # Can I doc this?
         def step(result, input)
-          @reducer.step(result, @handler.process(input))
+          @reducer.step(result, @handler.call(input))
         end
       end
     end
@@ -291,7 +290,7 @@ module Transducers
     define_transducer_class :filter do
       define_reducer_class do
         def step(result, input)
-          @handler.process(input) ? @reducer.step(result, input) : result
+          @handler.call(input) ? @reducer.step(result, input) : result
         end
       end
     end
@@ -300,7 +299,7 @@ module Transducers
     define_transducer_class :remove do
       define_reducer_class do
         def step(result, input)
-          @handler.process(input) ? result : @reducer.step(result, input)
+          @handler.call(input) ? result : @reducer.step(result, input)
         end
       end
     end
@@ -334,7 +333,7 @@ module Transducers
     define_transducer_class :take_while do
       define_reducer_class do
         def step(result, input)
-          @handler.process(input) ? @reducer.step(result, input) : Reduced.new(result)
+          @handler.call(input) ? @reducer.step(result, input) : Reduced.new(result)
         end
       end
     end
@@ -404,7 +403,7 @@ module Transducers
     define_transducer_class :keep do
       define_reducer_class do
         def step(result, input)
-          x = @handler.process(input)
+          x = @handler.call(input)
           x.nil? ? result : @reducer.step(result, x)
         end
       end
@@ -422,7 +421,7 @@ module Transducers
 
         def step(result, input)
           @index += 1
-          x = @handler.process(@index, input)
+          x = @handler.call(@index, input)
           x.nil? ? result : @reducer.step(result, x)
         end
       end
@@ -461,7 +460,7 @@ module Transducers
         end
 
         def step(result, input)
-          @done_dropping ||= !@handler.process(input)
+          @done_dropping ||= !@handler.call(input)
           @done_dropping ? @reducer.step(result, input) : result
         end
       end
@@ -507,7 +506,7 @@ module Transducers
 
         def step(result, input)
           prev_val = @prev_val
-          val = @handler.process(input)
+          val = @handler.call(input)
           @prev_val = val
           if val == prev_val || prev_val == :no_value_provided_for_transducer
             @a << input
@@ -569,7 +568,7 @@ module Transducers
         @prob = prob
       end
 
-      def process(_)
+      def call(_)
         @prob > Random.rand
       end
     end

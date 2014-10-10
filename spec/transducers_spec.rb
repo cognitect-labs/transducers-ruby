@@ -35,9 +35,9 @@ RSpec.describe Transducers do
     end
   end
 
-  it "creates a map transducer with an object that implements process" do
+  it "creates a map transducer with an object that implements call" do
     inc = Class.new do
-      def process(n) n + 1 end
+      def call(n) n + 1 end
     end.new
 
     expect([2,3,4]) do
@@ -57,10 +57,10 @@ RSpec.describe Transducers do
     end
   end
 
-  it "creates a filter transducer with an object that implements process" do
+  it "creates a filter transducer with an object that implements call" do
     expect([2,4]) do
       even = Class.new do
-        def process(n) n.even? end
+        def call(n) n.even? end
       end.new
       T.transduce(T.filter(even), :<<, [], [1,2,3,4,5])
     end
@@ -78,10 +78,10 @@ RSpec.describe Transducers do
     end
   end
 
-  it "creates a remove transducer with an object that implements process" do
+  it "creates a remove transducer with an object that implements call" do
     expect([1,3,5]) do
       even = Class.new do
-        def process(n) n.even? end
+        def call(n) n.even? end
       end.new
       T.transduce(T.remove(even), :<<, [], [1,2,3,4,5])
     end
@@ -164,7 +164,7 @@ RSpec.describe Transducers do
 
     expect([2,4,5]) do
       handler = Class.new do
-        def process(i,v)
+        def call(i,v)
           i if v > 0
         end
       end
@@ -186,7 +186,7 @@ RSpec.describe Transducers do
 
   it "creates a mapcat transducer with an object" do
     range_builder = Class.new do
-      def process(n) 0...n; end
+      def call(n) 0...n; end
     end.new
 
     expect([0,0,1,0,1,2]) do

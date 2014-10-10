@@ -17,11 +17,11 @@ require 'transducers'
 require 'benchmark'
 
 class Inc
-  def process(n) n + 1 end
+  def call(n) n + 1 end
 end
 
 class Even
-  def process(n) n.even? end
+  def call(n) n.even? end
 end
 
 map_inc         = Transducers.map(Inc.new)
