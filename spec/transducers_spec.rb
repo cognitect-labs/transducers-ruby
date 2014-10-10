@@ -220,6 +220,25 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a random_sample transducer" do
+    # These are admittedly just sanity checks.
+    expect(true) do
+      result = T.transduce(T.random_sample(0.5), :<<, [], 1..1000)
+      min, max = 400, 600
+      raise "Expected between #{min} and #{max}, got #{result.count}" unless
+        result.count.between?(min,max)
+      true
+    end
+
+    expect(true) do
+      result = T.transduce(T.random_sample(0.75), :<<, [], 1..1000)
+      min, max = 650, 850
+      raise "Expected between #{min} and #{max}, got #{result.count}" unless
+        result.count.between?(min,max)
+      true
+    end
+  end
+
   it "transduces a String" do
     expect("THIS") do
       T.transduce(T.map {|c| c.upcase},

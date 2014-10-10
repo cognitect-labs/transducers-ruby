@@ -560,6 +560,20 @@ module Transducers
       end
     end
 
+    class RandomSampleHandler
+      def initialize(prob)
+        @prob = prob
+      end
+
+      def process(_)
+        @prob > Random.rand
+      end
+    end
+
+    # @return [Transducer]
+    def random_sample(prob)
+      filter RandomSampleHandler.new(prob)
+    end
 
     # @method cat
     # @return [Transducer]
