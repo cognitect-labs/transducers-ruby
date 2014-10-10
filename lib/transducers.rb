@@ -519,6 +519,48 @@ module Transducers
       end
     end
 
+    # @method partition_all
+    # @return [Transducer]
+    define_transducer_class :partition_all do
+      define_reducer_class do
+        def initialize(reducer, n)
+          super(reducer)
+          @n = n
+          @a = []
+        end
+
+        def step(result, input)
+          @a << input
+          if @a.size == @n
+            a = @a.dup
+            @a.clear
+            @reducer.step(result, a)
+          else
+            result
+          end
+        end
+
+        def complete(result)
+          if @a.empty?
+            result
+          else
+            a = @a.dup
+            @a.clear
+            @reducer.step(result, a)
+          end
+        end
+      end
+
+      def initialize(n)
+        @n = n
+      end
+
+      def apply(reducer)
+        reducer_class.new(reducer, @n)
+      end
+    end
+
+
     # @method cat
     # @return [Transducer]
     define_transducer_class :cat do

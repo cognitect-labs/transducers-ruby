@@ -210,6 +210,16 @@ RSpec.describe Transducers do
     end
   end
 
+  it "creates a partition_all transducer" do
+    expect([[1,2],[3,4],[5,6]]) do
+      T.transduce(T.partition_all(2), :<<, [], 1..6)
+    end
+
+    expect([[1,2],[3,4],[5,6],[7]]) do
+      T.transduce(T.partition_all(2), :<<, [], 1..7)
+    end
+  end
+
   it "transduces a String" do
     expect("THIS") do
       T.transduce(T.map {|c| c.upcase},
