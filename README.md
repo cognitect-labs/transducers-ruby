@@ -6,7 +6,9 @@ Also see the introductory [blog post](http://blog.cognitect.com/blog/2014/8/6/tr
 
 ## Installation
 
-Until we release a Ruby gem:
+    gem install transducers
+
+Or, for the latest:
 
     git clone https://github.com/cognitect-labs/transducers-ruby.git
     cd transducers-ruby
@@ -20,7 +22,8 @@ Until we release a Ruby gem:
     T.transduce(T.compose(T.map(:succ), T.filter(:even?)), :<<, [], 0..9)
     # => [2, 4, 6, 8, 10]
 
-See docs for more detail.
+See [http://rubydoc.info/github/cognitect-labs/transducers-ruby/frames](http://rubydoc.info/github/cognitect-labs/transducers-ruby/frames)
+for more detail.
 
 ## Contributing
 
