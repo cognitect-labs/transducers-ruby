@@ -128,14 +128,14 @@ module Transducers
       @init = init
       if sym
         @sym = sym
-        (class << self; self; end).class_eval do
+        singleton_class.class_eval do
           def step(result, input)
             result.send(@sym, input)
           end
         end
       else
         @block = block
-        (class << self; self; end).class_eval do
+        singleton_class.class_eval do
           def step(result, input)
             @block.call(result, input)
           end
@@ -281,7 +281,6 @@ module Transducers
     # reducer stack.
     define_transducer_class :map do
       define_reducer_class do
-        # Can I doc this?
         def step(result, input)
           @reducer.step(result, @handler.call(input))
         end
