@@ -17,7 +17,7 @@ require 'transducers'
 require 'benchmark'
 
 class Inc
-  def process(n) n + 1 end
+  def call(n) n + 1 end
 end
 
 times = 100

@@ -242,8 +242,8 @@ RSpec.describe Transducers do
   it "transduces a String" do
     expect("THIS") do
       T.transduce(T.map {|c| c.upcase},
-                Transducers::Reducer.new("") {|r,i| r << i},
-                "this")
+                  Transducers::Reducer.new("") {|r,i| r << i},
+                  "this")
     end
   end
 
@@ -257,7 +257,7 @@ RSpec.describe Transducers do
     orig_expect do
       r = Class.new { def step(_,_) end }.new
       T.transduce(T.map(:succ), r, [1,2,3])
-    end.to raise_error(NoMethodError)
+    end.to raise_error
   end
 
   it "raises when it receives a symbol but no initial value" do

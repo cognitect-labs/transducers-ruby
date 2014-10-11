@@ -17,7 +17,7 @@ require 'transducers'
 require 'benchmark'
 
 class Even
-  def process(n) n.even? end
+  def call(n) n.even? end
 end
 
 e = 1.upto(1000)

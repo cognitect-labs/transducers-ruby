@@ -21,14 +21,14 @@ RSpec.describe Transducers::Reducer do
     r = Reducer.new(0, :+)
     expect(r.init).to eq(0)
     expect(r.complete(1)).to eq(1)
-    expect(r.step(3,7)).to eq(10)
+    expect(r.call(3,7)).to eq(10)
   end
 
   example do
     r = Reducer.new(0) {|r,i| r+i}
     expect(r.init).to eq(0)
     expect(r.complete(1)).to eq(1)
-    expect(r.step(3,7)).to eq(10)
+    expect(r.call(3,7)).to eq(10)
   end
 
   example do

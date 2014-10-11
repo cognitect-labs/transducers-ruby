@@ -21,7 +21,7 @@
 # described on http://clojure.org/transducers to an OO language like
 # Ruby.
 #
-# A _reducer_ is an object with a `step` method that takes a result
+# A _reducer_ is an object with a `call` method that takes a result
 # (so far) and an input and returns a new result. This is similar to
 # the blocks we pass to Ruby's `reduce` (a.k.a `inject`), and serves a
 # similar role in _transducing process_.
@@ -51,7 +51,7 @@
 #
 # # reducer
 # appender = Class.new do
-#              def step(result, input) result << input end
+#              def call(result, input) result << input end
 #            end.new
 #
 # # transducing process
@@ -123,30 +123,35 @@
 # ```
 module Transducers
   class Reducer
-    def initialize(init, sym=nil, &block)
-      raise ArgumentError.new("No init provided") if init == :no_init_provided
-      @init = init
-      if sym
-        @sym = sym
-        singleton_class.class_eval do
-          def step(result, input)
-            result.send(@sym, input)
-          end
-        end
+    module ReducingProc
+      attr_accessor :init
+      def complete(result) result end
+    end
+
+    def self.new(init, sym=nil, &proc)
+      if proc
+        proc.singleton_class.send(:include, ReducingProc)
+        proc.init = init
+        proc
       else
-        @block = block
-        singleton_class.class_eval do
-          def step(result, input)
-            @block.call(result, input)
-          end
-        end
+        super
       end
     end
 
-    def init()           @init  end
-    def complete(result) result end
-    def step(result, input)
-      # placeholder for docs - overwritten in initalize
+    attr_reader :init
+
+    def initialize(init, sym)
+      raise ArgumentError.new("No init provided") if init == :no_init_provided
+      @init = init
+      @sym = sym
+    end
+
+    def complete(result)
+      result
+    end
+
+    def call(result, input)
+      result.send(@sym, input)
     end
   end
 
@@ -165,8 +170,8 @@ module Transducers
       @reducer = reducer
     end
 
-    def step(result, input)
-      ret = @reducer.step(result, input)
+    def call(result, input)
+      ret = @reducer.call(result, input)
       Reduced === ret ? Reduced.new(ret) : ret
     end
   end
@@ -229,19 +234,19 @@ module Transducers
     # @param [Transducer] transducer
     # @param [Reducer, Symbol, Bock] reducer
     def transduce(transducer, reducer, init=:no_init_provided, coll)
-      reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:step)
+      reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:call)
       reducer = transducer.apply(reducer)
       result = init == :no_init_provided ? reducer.init : init
       case coll
       when Enumerable
         coll.each do |input|
-          result = reducer.step(result, input)
+          result = reducer.call(result, input)
           return result.val if Transducers::Reduced === result
           result
         end
       when String
         coll.each_char do |input|
-          result = reducer.step(result, input)
+          result = reducer.call(result, input)
           return result.val if Transducers::Reduced === result
           result
         end
@@ -281,8 +286,8 @@ module Transducers
     # reducer stack.
     define_transducer_class :map do
       define_reducer_class do
-        def step(result, input)
-          @reducer.step(result, @handler.call(input))
+        def call(result, input)
+          @reducer.call(result, @handler.call(input))
         end
       end
     end
@@ -290,8 +295,8 @@ module Transducers
     # @macro common_transducer
     define_transducer_class :filter do
       define_reducer_class do
-        def step(result, input)
-          @handler.call(input) ? @reducer.step(result, input) : result
+        def call(result, input)
+          @handler.call(input) ? @reducer.call(result, input) : result
         end
       end
     end
@@ -299,8 +304,8 @@ module Transducers
     # @macro common_transducer
     define_transducer_class :remove do
       define_reducer_class do
-        def step(result, input)
-          @handler.call(input) ? result : @reducer.step(result, input)
+        def call(result, input)
+          @handler.call(input) ? result : @reducer.call(result, input)
         end
       end
     end
@@ -314,9 +319,9 @@ module Transducers
           @n = n
         end
 
-        def step(result, input)
+        def call(result, input)
           @n -= 1
-          ret = @reducer.step(result, input)
+          ret = @reducer.call(result, input)
           @n > 0 ? ret : Reduced.new(ret)
         end
       end
@@ -333,8 +338,8 @@ module Transducers
     # @macro common_transducer
     define_transducer_class :take_while do
       define_reducer_class do
-        def step(result, input)
-          @handler.call(input) ? @reducer.step(result, input) : Reduced.new(result)
+        def call(result, input)
+          @handler.call(input) ? @reducer.call(result, input) : Reduced.new(result)
         end
       end
     end
@@ -349,10 +354,10 @@ module Transducers
           @count = 0
         end
 
-        def step(result, input)
+        def call(result, input)
           @count += 1
           if @count % @n == 0
-            @reducer.step(result, input)
+            @reducer.call(result, input)
           else
             result
           end
@@ -377,11 +382,11 @@ module Transducers
           @smap = smap
         end
 
-        def step(result, input)
+        def call(result, input)
           if @smap.has_key?(input)
-            @reducer.step(result, @smap[input])
+            @reducer.call(result, @smap[input])
           else
-            @reducer.step(result, input)
+            @reducer.call(result, input)
           end
         end
       end
@@ -403,9 +408,9 @@ module Transducers
     # @macro common_transducer
     define_transducer_class :keep do
       define_reducer_class do
-        def step(result, input)
+        def call(result, input)
           x = @handler.call(input)
-          x.nil? ? result : @reducer.step(result, x)
+          x.nil? ? result : @reducer.call(result, x)
         end
       end
     end
@@ -420,10 +425,10 @@ module Transducers
           @index = -1
         end
 
-        def step(result, input)
+        def call(result, input)
           @index += 1
           x = @handler.call(@index, input)
-          x.nil? ? result : @reducer.step(result, x)
+          x.nil? ? result : @reducer.call(result, x)
         end
       end
     end
@@ -437,9 +442,9 @@ module Transducers
           @n = n
         end
 
-        def step(result, input)
+        def call(result, input)
           @n -= 1
-          @n <= -1 ? @reducer.step(result, input) : result
+          @n <= -1 ? @reducer.call(result, input) : result
         end
       end
 
@@ -460,9 +465,9 @@ module Transducers
           @done_dropping = false
         end
 
-        def step(result, input)
+        def call(result, input)
           @done_dropping ||= !@handler.call(input)
-          @done_dropping ? @reducer.step(result, input) : result
+          @done_dropping ? @reducer.call(result, input) : result
         end
       end
     end
@@ -476,8 +481,8 @@ module Transducers
           @prior = :no_value_provided_for_transducer
         end
 
-        def step(result, input)
-          ret = input == @prior ? result : @reducer.step(result, input)
+        def call(result, input)
+          ret = input == @prior ? result : @reducer.call(result, input)
           @prior = input
           ret
         end
@@ -500,12 +505,12 @@ module Transducers
                    else
                      a = @a.dup
                      @a.clear
-                     @reducer.step(result, a)
+                     @reducer.call(result, a)
                    end
           @reducer.complete(result)
         end
 
-        def step(result, input)
+        def call(result, input)
           prev_val = @prev_val
           val = @handler.call(input)
           @prev_val = val
@@ -515,7 +520,7 @@ module Transducers
           else
             a = @a.dup
             @a.clear
-            ret = @reducer.step(result, a)
+            ret = @reducer.call(result, a)
             @a << input unless (Reduced === ret)
             ret
           end
@@ -533,12 +538,12 @@ module Transducers
           @a = []
         end
 
-        def step(result, input)
+        def call(result, input)
           @a << input
           if @a.size == @n
             a = @a.dup
             @a.clear
-            @reducer.step(result, a)
+            @reducer.call(result, a)
           else
             result
           end
@@ -550,7 +555,7 @@ module Transducers
           else
             a = @a.dup
             @a.clear
-            @reducer.step(result, a)
+            @reducer.call(result, a)
           end
         end
       end
@@ -584,7 +589,7 @@ module Transducers
     # @return [Transducer]
     define_transducer_class :cat do
       define_reducer_class do
-        def step(result, input)
+        def call(result, input)
           Transducers.transduce(PreservingReduced.new, @reducer, result, input)
         end
       end
