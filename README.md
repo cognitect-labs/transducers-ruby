@@ -6,7 +6,7 @@ Also see the introductory
 [blog post](http://blog.cognitect.com/blog/2014/8/6/transducers-are-coming)
 and this [video](https://www.youtube.com/watch?v=6mTbuzafcII).
 
-transducers-ruby is brought to you by [Cognitect Labs](http://cognitect-labs.github.io/)
+transducers-ruby is brought to you by [Cognitect Labs](http://cognitect-labs.github.io/).
 
 ## Installation
 
