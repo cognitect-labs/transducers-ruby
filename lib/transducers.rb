@@ -123,16 +123,22 @@
 # ```
 module Transducers
   class Reducer
-    module ReducingProc
-      attr_accessor :init
-      def complete(result) result end
+    class ReducingProc < Proc
+      attr_reader :init
+
+      def initialize(init, &proc)
+        super(&proc)
+        @init = init
+      end
+
+      def complete(result)
+        result
+      end
     end
 
     def self.new(init, sym=nil, &proc)
       if proc
-        proc.singleton_class.send(:include, ReducingProc)
-        proc.init = init
-        proc
+        ReducingProc.new(init, &proc)
       else
         super
       end
