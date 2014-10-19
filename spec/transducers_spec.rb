@@ -269,17 +269,17 @@ RSpec.describe Transducers do
   describe "composition" do
     example do
       expect([3,7]) do
-        td = T.compose(T.map {|a| [a.reduce(&:+)]}, T.cat)
-        T.transduce(td, :<<, [], [[1,2],[3,4]])
+        t = T.compose(T.map {|a| [a.reduce(&:+)]}, T.cat)
+        T.transduce(t, :<<, [], [[1,2],[3,4]])
       end
     end
 
     example do
       expect(12) do
-        td = T.compose(T.take(5),
-                       T.map {|n| n + 1},
-                       T.filter(:even?))
-        T.transduce(td, :+, 0, 1..20)
+        t = T.compose(T.take(5),
+                      T.map {|n| n + 1},
+                      T.filter(:even?))
+        T.transduce(t, :+, 0, 1..20)
       end
     end
   end

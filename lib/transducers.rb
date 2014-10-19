@@ -613,6 +613,14 @@ module Transducers
     end
 
     # @return [Transducer]
+    # Composes a series of transducers into a single transducer that
+    # you can pass to `Transducers.transduce`.
+    # @example
+    #   t = Transducers.compose(
+    #         Transducers.map(&:succ),
+    #         Transducers.filter(&:even?)
+    #       )
+    #   Transducers.transduce(t, ...)
     def compose(*transducers)
       ComposedTransducer.new(*transducers)
     end
