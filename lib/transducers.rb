@@ -238,7 +238,7 @@ module Transducers
     # @overload transduce(transducer, reducer, coll)
     # @overload transduce(transducer, reducer, init, coll)
     # @param [Transducer] transducer
-    # @param [Reducer, Symbol, Bock] reducer
+    # @param [Reducer, Symbol, Block] reducer
     def transduce(transducer, reducer, init=:no_init_provided, coll)
       reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:call)
       reducer = transducer.apply(reducer)
