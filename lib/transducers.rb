@@ -122,6 +122,8 @@
 # #=> 122880
 # ```
 module Transducers
+  extend self
+
   class Reducer
     class ReducingProc < Proc
       attr_reader :init
@@ -161,7 +163,6 @@ module Transducers
     end
   end
 
-  # @api private
   class Reduced
     attr_reader :val
 
@@ -170,7 +171,6 @@ module Transducers
     end
   end
 
-  # @api private
   class PreservingReduced
     def apply(reducer)
       @reducer = reducer
@@ -182,6 +182,7 @@ module Transducers
     end
   end
 
+  # @api private
   class WrappingReducer
     class MethodHandler
       def initialize(method)
@@ -213,421 +214,507 @@ module Transducers
     end
   end
 
-  # @api private
-  class BaseTransducer
-    class << self
-      attr_reader :reducer_class
-
-      def define_reducer_class(&block)
-        @reducer_class = Class.new(WrappingReducer)
-        @reducer_class.class_eval(&block)
+  # @overload transduce(transducer, reducer, coll)
+  # @overload transduce(transducer, reducer, init, coll)
+  # @param [Transducer] transducer
+  # @param [Reducer, Symbol, Block] reducer
+  def transduce(transducer, reducer, init=:no_init_provided, coll)
+    reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:call)
+    reducer = transducer.apply(reducer)
+    result = init == :no_init_provided ? reducer.init : init
+    case coll
+    when Enumerable
+      coll.each do |input|
+        result = reducer.call(result, input)
+        return result.val if Transducers::Reduced === result
+        result
+      end
+    when String
+      coll.each_char do |input|
+        result = reducer.call(result, input)
+        return result.val if Transducers::Reduced === result
+        result
       end
     end
+    reducer.complete(result)
+  end
 
+  # @api private
+  class ComposedTransducer
+    def initialize(*transducers)
+      @transducers = transducers
+    end
+
+    def apply(reducer)
+      @transducers.reverse.reduce(reducer) {|r,t| t.apply(r)}
+    end
+  end
+
+  # @return [Transducer]
+  # @param [Transducer, ...] transducers
+  # Composes a series of transducers into a single transducer that you
+  # can pass to `Transducers.transduce`. Transducers are applied left
+  # to right.
+  # @example
+  #   T = Transducers
+  #   divisible_by_3 = T.filter {|v| v % 3 == 0}
+  #   times_4        = T.map    {|v| v * 4}
+  #   t = T.compose(T.map(&:succ), T.filter(&:even?))
+  #   T.transduce(t, :<<, [], 1.upto(9)
+  #   #=> [2, 4, 6, 8, 10]
+  def compose(*transducers)
+    ComposedTransducer.new(*transducers)
+  end
+
+  # @api private
+  class Transducer
     def initialize(handler, &block)
       @handler = handler
       @block = block
     end
 
     def reducer_class
-      self.class.reducer_class
+      @reducer_class ||= self.class.const_get("Reducer")
+    end
+
+    def apply(reducer)
+      reducer_class.new(reducer, @handler, &@block)
     end
   end
 
-  class << self
-    # @overload transduce(transducer, reducer, coll)
-    # @overload transduce(transducer, reducer, init, coll)
-    # @param [Transducer] transducer
-    # @param [Reducer, Symbol, Block] reducer
-    def transduce(transducer, reducer, init=:no_init_provided, coll)
-      reducer = Reducer.new(init, reducer) unless reducer.respond_to?(:call)
-      reducer = transducer.apply(reducer)
-      result = init == :no_init_provided ? reducer.init : init
-      case coll
-      when Enumerable
-        coll.each do |input|
-          result = reducer.call(result, input)
-          return result.val if Transducers::Reduced === result
+  # @api private
+  class Map < Transducer
+    class Reducer < WrappingReducer
+      def call(result, input)
+        @reducer.call(result, @handler.call(input))
+      end
+    end
+  end
+
+  # @api private
+  class Filter < Transducer
+    class Reducer < WrappingReducer
+      def call(result, input)
+        @handler.call(input) ? @reducer.call(result, input) : result
+      end
+    end
+  end
+
+  # @api private
+  class Remove < Transducer
+    class Reducer < WrappingReducer
+      def call(result, input)
+        @handler.call(input) ? result : @reducer.call(result, input)
+      end
+    end
+  end
+
+  # @api private
+  class Take < Transducer
+    class Reducer < WrappingReducer
+      def initialize(reducer, n)
+        super(reducer)
+        @n = n
+      end
+
+      def call(result, input)
+        @n -= 1
+        ret = @reducer.call(result, input)
+        @n > 0 ? ret : Reduced.new(ret)
+      end
+    end
+
+    def initialize(n)
+      @n = n
+    end
+
+    def apply(reducer)
+      reducer_class.new(reducer, @n)
+    end
+  end
+
+  # @api private
+  class TakeWhile < Transducer
+    class Reducer < WrappingReducer
+      def call(result, input)
+        @handler.call(input) ? @reducer.call(result, input) : Reduced.new(result)
+      end
+    end
+  end
+
+  # @api private
+  class TakeNth < Transducer
+    class Reducer < WrappingReducer
+      def initialize(reducer, n)
+        super(reducer)
+        @n = n
+        @count = 0
+      end
+
+      def call(result, input)
+        @count += 1
+        if @count % @n == 0
+          @reducer.call(result, input)
+        else
           result
         end
-      when String
-        coll.each_char do |input|
-          result = reducer.call(result, input)
-          return result.val if Transducers::Reduced === result
+      end
+    end
+
+    def initialize(n)
+      @n = n
+    end
+
+    def apply(reducer)
+      reducer_class.new(reducer, @n)
+    end
+  end
+
+  # @api private
+  class Replace < Transducer
+    class Reducer < WrappingReducer
+      def initialize(reducer, smap)
+        super(reducer)
+        @smap = smap
+      end
+
+      def call(result, input)
+        if @smap.has_key?(input)
+          @reducer.call(result, @smap[input])
+        else
+          @reducer.call(result, input)
+        end
+      end
+    end
+
+    def initialize(smap)
+      @smap = case smap
+              when Hash
+                smap
+              else
+                (0...smap.size).zip(smap).to_h
+              end
+    end
+
+    def apply(reducer)
+      reducer_class.new(reducer, @smap)
+    end
+  end
+
+  # @api private
+  class Keep < Transducer
+    class Reducer < WrappingReducer
+      def call(result, input)
+        x = @handler.call(input)
+        x.nil? ? result : @reducer.call(result, x)
+      end
+    end
+  end
+
+  # @api private
+  class KeepIndexed < Transducer
+    class Reducer < WrappingReducer
+      def initialize(*)
+        super
+        @index = -1
+      end
+
+      def call(result, input)
+        @index += 1
+        x = @handler.call(@index, input)
+        x.nil? ? result : @reducer.call(result, x)
+      end
+    end
+  end
+
+  # @api private
+  class Drop < Transducer
+    class Reducer < WrappingReducer
+      def initialize(reducer, n)
+        super(reducer)
+        @n = n
+      end
+
+      def call(result, input)
+        @n -= 1
+        @n <= -1 ? @reducer.call(result, input) : result
+      end
+    end
+
+    def initialize(n)
+      @n = n
+    end
+
+    def apply(reducer)
+      reducer_class.new(reducer, @n)
+    end
+  end
+
+  # @api private
+  class DropWhile < Transducer
+    class Reducer < WrappingReducer
+      def initalize(*)
+        super
+        @done_dropping = false
+      end
+
+      def call(result, input)
+        @done_dropping ||= !@handler.call(input)
+        @done_dropping ? @reducer.call(result, input) : result
+      end
+    end
+  end
+
+  # @api private
+  class Dedupe < Transducer
+    class Reducer < WrappingReducer
+      def initialize(*)
+        super
+        @prior = :no_value_provided_for_transducer
+      end
+
+      def call(result, input)
+        ret = input == @prior ? result : @reducer.call(result, input)
+        @prior = input
+        ret
+      end
+    end
+  end
+
+  # @api private
+  class PartitionBy < Transducer
+    class Reducer < WrappingReducer
+      def initialize(*)
+        super
+        @a = []
+        @prev_val = :no_value_provided_for_transducer
+      end
+
+      def complete(result)
+        result = if @a.empty?
+                   result
+                 else
+                   a = @a.dup
+                   @a.clear
+                   @reducer.call(result, a)
+                 end
+        @reducer.complete(result)
+      end
+
+      def call(result, input)
+        prev_val = @prev_val
+        val = @handler.call(input)
+        @prev_val = val
+        if val == prev_val || prev_val == :no_value_provided_for_transducer
+          @a << input
           result
-        end
-      end
-      reducer.complete(result)
-    end
-
-    def self.define_transducer_class(name, &block)
-      t = Class.new(BaseTransducer)
-      t.class_eval(&block)
-      unless t.instance_methods.include? :apply
-        t.class_eval do
-          define_method :apply do |reducer|
-            reducer_class.new(reducer, @handler, &@block)
-          end
-        end
-      end
-
-      Transducers.send(:define_method, name) do |handler=nil, &b|
-        t.new(handler, &b)
-      end
-
-      Transducers.send(:module_function, name)
-    end
-
-    # @macro [new] common_transducer
-    #   @return [Transducer]
-    #   @method $1(handler=nil, &block)
-    #   @param [Object, Symbol] handler
-    #     Given an object that responds to +process+, uses it as the
-    #     handler.  Given a +Symbol+, builds a handler whose +process+
-    #     method will send +Symbol+ to its argument.
-    #   @param [Block] block <i>(optional)</i>
-    #     Given a +Block+, builds a handler whose +process+ method will
-    #     call the block with its argument(s).
-    # Returns a transducer that adds a map transformation to the
-    # reducer stack.
-    define_transducer_class :map do
-      define_reducer_class do
-        def call(result, input)
-          @reducer.call(result, @handler.call(input))
-        end
-      end
-    end
-
-    # @macro common_transducer
-    define_transducer_class :filter do
-      define_reducer_class do
-        def call(result, input)
-          @handler.call(input) ? @reducer.call(result, input) : result
-        end
-      end
-    end
-
-    # @macro common_transducer
-    define_transducer_class :remove do
-      define_reducer_class do
-        def call(result, input)
-          @handler.call(input) ? result : @reducer.call(result, input)
-        end
-      end
-    end
-
-    # @method take(n)
-    # @return [Transducer]
-    define_transducer_class :take do
-      define_reducer_class do
-        def initialize(reducer, n)
-          super(reducer)
-          @n = n
-        end
-
-        def call(result, input)
-          @n -= 1
-          ret = @reducer.call(result, input)
-          @n > 0 ? ret : Reduced.new(ret)
-        end
-      end
-
-      def initialize(n)
-        @n = n
-      end
-
-      def apply(reducer)
-        reducer_class.new(reducer, @n)
-      end
-    end
-
-    # @macro common_transducer
-    define_transducer_class :take_while do
-      define_reducer_class do
-        def call(result, input)
-          @handler.call(input) ? @reducer.call(result, input) : Reduced.new(result)
-        end
-      end
-    end
-
-    # @method take_nth(n)
-    # @return [Transducer]
-    define_transducer_class :take_nth do
-      define_reducer_class do
-        def initialize(reducer, n)
-          super(reducer)
-          @n = n
-          @count = 0
-        end
-
-        def call(result, input)
-          @count += 1
-          if @count % @n == 0
-            @reducer.call(result, input)
-          else
-            result
-          end
-        end
-      end
-
-      def initialize(n)
-        @n = n
-      end
-
-      def apply(reducer)
-        reducer_class.new(reducer, @n)
-      end
-    end
-
-    # @method replace(source_map)
-    # @return [Transducer]
-    define_transducer_class :replace do
-      define_reducer_class do
-        def initialize(reducer, smap)
-          super(reducer)
-          @smap = smap
-        end
-
-        def call(result, input)
-          if @smap.has_key?(input)
-            @reducer.call(result, @smap[input])
-          else
-            @reducer.call(result, input)
-          end
-        end
-      end
-
-      def initialize(smap)
-        @smap = case smap
-                when Hash
-                  smap
-                else
-                  (0...smap.size).zip(smap).to_h
-                end
-      end
-
-      def apply(reducer)
-        reducer_class.new(reducer, @smap)
-      end
-    end
-
-    # @macro common_transducer
-    define_transducer_class :keep do
-      define_reducer_class do
-        def call(result, input)
-          x = @handler.call(input)
-          x.nil? ? result : @reducer.call(result, x)
-        end
-      end
-    end
-
-    # @macro common_transducer
-    # @note the handler for this method requires two arguments: the
-    #   index and the input.
-    define_transducer_class :keep_indexed do
-      define_reducer_class do
-        def initialize(*)
-          super
-          @index = -1
-        end
-
-        def call(result, input)
-          @index += 1
-          x = @handler.call(@index, input)
-          x.nil? ? result : @reducer.call(result, x)
-        end
-      end
-    end
-
-    # @method drop(n)
-    # @return [Transducer]
-    define_transducer_class :drop do
-      define_reducer_class do
-        def initialize(reducer, n)
-          super(reducer)
-          @n = n
-        end
-
-        def call(result, input)
-          @n -= 1
-          @n <= -1 ? @reducer.call(result, input) : result
-        end
-      end
-
-      def initialize(n)
-        @n = n
-      end
-
-      def apply(reducer)
-        reducer_class.new(reducer, @n)
-      end
-    end
-
-    # @macro common_transducer
-    define_transducer_class :drop_while do
-      define_reducer_class do
-        def initalize(*)
-          super
-          @done_dropping = false
-        end
-
-        def call(result, input)
-          @done_dropping ||= !@handler.call(input)
-          @done_dropping ? @reducer.call(result, input) : result
-        end
-      end
-    end
-
-    # @method dedupe
-    # @return [Transducer]
-    define_transducer_class :dedupe do
-      define_reducer_class do
-        def initialize(*)
-          super
-          @prior = :no_value_provided_for_transducer
-        end
-
-        def call(result, input)
-          ret = input == @prior ? result : @reducer.call(result, input)
-          @prior = input
+        else
+          a = @a.dup
+          @a.clear
+          ret = @reducer.call(result, a)
+          @a << input unless (Reduced === ret)
           ret
         end
       end
     end
+  end
 
-    # @method partition_by
-    # @return [Transducer]
-    define_transducer_class :partition_by do
-      define_reducer_class do
-        def initialize(*)
-          super
-          @a = []
-          @prev_val = :no_value_provided_for_transducer
-        end
-
-        def complete(result)
-          result = if @a.empty?
-                     result
-                   else
-                     a = @a.dup
-                     @a.clear
-                     @reducer.call(result, a)
-                   end
-          @reducer.complete(result)
-        end
-
-        def call(result, input)
-          prev_val = @prev_val
-          val = @handler.call(input)
-          @prev_val = val
-          if val == prev_val || prev_val == :no_value_provided_for_transducer
-            @a << input
-            result
-          else
-            a = @a.dup
-            @a.clear
-            ret = @reducer.call(result, a)
-            @a << input unless (Reduced === ret)
-            ret
-          end
-        end
-      end
-    end
-
-    # @method partition_all
-    # @return [Transducer]
-    define_transducer_class :partition_all do
-      define_reducer_class do
-        def initialize(reducer, n)
-          super(reducer)
-          @n = n
-          @a = []
-        end
-
-        def call(result, input)
-          @a << input
-          if @a.size == @n
-            a = @a.dup
-            @a.clear
-            @reducer.call(result, a)
-          else
-            result
-          end
-        end
-
-        def complete(result)
-          if @a.empty?
-            result
-          else
-            a = @a.dup
-            @a.clear
-            @reducer.call(result, a)
-          end
-        end
-      end
-
-      def initialize(n)
+  # @api private
+  class PartitionAll < Transducer
+    class Reducer < WrappingReducer
+      def initialize(reducer, n)
+        super(reducer)
         @n = n
+        @a = []
       end
 
-      def apply(reducer)
-        reducer_class.new(reducer, @n)
+      def call(result, input)
+        @a << input
+        if @a.size == @n
+          a = @a.dup
+          @a.clear
+          @reducer.call(result, a)
+        else
+          result
+        end
       end
-    end
 
-    # @api private
-    class RandomSampleHandler
-      def initialize(prob)
-        @prob = prob
-      end
-
-      def call(_)
-        @prob > Random.rand
-      end
-    end
-
-    # @return [Transducer]
-    def random_sample(prob)
-      filter RandomSampleHandler.new(prob)
-    end
-
-    # @method cat
-    # @return [Transducer]
-    define_transducer_class :cat do
-      define_reducer_class do
-        def call(result, input)
-          Transducers.transduce(PreservingReduced.new, @reducer, result, input)
+      def complete(result)
+        if @a.empty?
+          result
+        else
+          a = @a.dup
+          @a.clear
+          @reducer.call(result, a)
         end
       end
     end
 
-    # @api private
-    class ComposedTransducer
-      def initialize(*transducers)
-        @transducers = transducers
+    def initialize(n)
+      @n = n
+    end
+
+    def apply(reducer)
+      reducer_class.new(reducer, @n)
+    end
+  end
+
+  # @api private
+  class Cat < Transducer
+    class Reducer < WrappingReducer
+      def call(result, input)
+        Transducers.transduce(PreservingReduced.new, @reducer, result, input)
       end
+    end
+  end
 
-      def apply(reducer)
-        @transducers.reverse.reduce(reducer) {|r,t| t.apply(r)}
-      end
+  # @api private
+  class RandomSampleHandler
+    def initialize(prob)
+      @prob = prob
     end
 
-    # @return [Transducer]
-    # Composes a series of transducers into a single transducer that
-    # you can pass to `Transducers.transduce`.
-    # @example
-    #   t = Transducers.compose(
-    #         Transducers.map(&:succ),
-    #         Transducers.filter(&:even?)
-    #       )
-    #   Transducers.transduce(t, ...)
-    def compose(*transducers)
-      ComposedTransducer.new(*transducers)
+    def call(_)
+      @prob > Random.rand
     end
+  end
 
-    # @return [Transducer]
-    def mapcat(handler=nil, &block)
-      compose(map(handler, &block), cat)
-    end
+  # @api private
+  def self.define_transducer_method(name)
+    class_name = name.to_s.split("_").map(&:capitalize).join
+    eval <<-HERE
+def #{name}(handler=nil, &b)
+  Transducers::#{class_name}.new(handler, &b)
+end
+HERE
+  end
+
+  # @!macro [new] common_transducer
+  #   @return [Transducer]
+  #   @method $1(handler=nil, &block)
+  #   @param [Object, Symbol] handler
+  #     Given an object that responds to `process`, uses it as the
+  #     handler.  Given a `Symbol`, builds a handler whose `process`
+  #     method will send `Symbol` to its argument.
+  #   @param [Block] block <i>(optional)</i>
+  #     Given a `Block`, builds a handler whose `process` method will
+  #     call the block with its argument(s).
+
+  # @macro common_transducer
+  # Applies the given transformation to each element.
+  define_transducer_method(:map)
+
+  # @macro common_transducer
+  # Keeps all elements for which predicate (handler or block) returns true.
+  define_transducer_method(:filter)
+
+  # @method take(n)
+  # @return [Transducer]
+  # @param [Fixnum] n
+  # Takes n elements and drops the rest.
+  define_transducer_method(:take)
+
+  # @macro common_transducer
+  # Removes all elements for which predicate (`handler` or `block`) returns true
+  # (opposite of `filter`).
+  define_transducer_method(:remove)
+
+  # @macro common_transducer
+  # Takes elements until predicate (`handler` or `block`) returns false.
+  define_transducer_method(:take_while)
+
+  # @method take_nth(n)
+  # @return [Transducer]
+  # @param [Fixnum] n
+  # Takes only the nth element.
+  define_transducer_method(:take_nth)
+
+  # @method replace(replacement_pairs)
+  # @return [Transducer]
+  # @param [Hash] replacement_pairs a map of elements to replace
+  #   (keys) to their replacements (values)
+  # Given a `Hash` of replacement pairs, replaces each element that = a key
+  # in `replacement_pairs` with its corresponding value.
+  define_transducer_method(:replace)
+
+  # @macro common_transducer
+  # Keeps all elements for which predicate (handler or block) returns
+  # a non-nil result.  This is similar to `filter`, but may include
+  # `false`.
+  define_transducer_method(:keep)
+
+  # @macro common_transducer
+  # @note The handler method or block must accept two arguments: the index of the item
+  #   and the item itself.
+  # @example
+  #   T = Transducers
+  #
+  #   T.transduce(T.keep_indexed {|idx,val| val if idx.odd?}, :<<, [], [:a, :b, :c, :d, :e])
+  #   #=> [:b, :d]
+  #
+  #   T.transduce(T.keep_indexed {|idx,val| idx if val > 0}, :<<, [],  [-9, 0, 29, -7, 45, 3, -8])
+  #   #=> [2,4,5]
+  # Provides a sequence of the non-nil results of `predicate.call(index, item)`
+  define_transducer_method(:keep_indexed)
+
+  # @method drop(n)
+  # @return [Transducer]
+  # @param [Fixnum] n
+  # Drops the first n elements.
+  define_transducer_method(:drop)
+
+  # @macro common_transducer
+  # Drops elements until predicate (`handler` or `block`) returns true.
+  define_transducer_method(:drop_while)
+
+  # @method dedupe()
+  # @return [Transducer]
+  # @example
+  #   T.transduce(T.dedupe, :<<, [], [1,2,2,1,1,1,3,4,4,1,1,5])
+  #   #=> [1,2,1,3,4,1,5]
+  # Removes consecutive duplicate elements.
+  define_transducer_method(:dedupe)
+
+  # @macro common_transducer
+  # Applies f (`handler` or `block`) to each value in input, splitting
+  # the result each time f returns a new value.
+  define_transducer_method(:partition_by)
+
+  # @overload partition_all(n)
+  # @return [Transducer]
+  # @example
+  #   T.transduce(T.partition_all(2), :<<, [], 1..6)
+  #   #=> [[1,2],[3,4],[5,6]]
+  #
+  #   T.transduce(T.partition_all(2), :<<, [], 1..7)
+  #   #=> [[1,2],[3,4],[5,6],[7]]
+  # Produces a sequence of arrays of length `n` plus, possibly, one array
+  # which contains the remaining elements.
+  define_transducer_method(:partition_all)
+
+  # @method cat
+  # @return [Transducer]
+  # Concats a series of collections.
+  define_transducer_method(:cat)
+
+  # @return [Transducer]
+  # @param [Float] probability represents the probabilty each element will flow through.
+  # Returns a random sample of input elements based on probability.
+  def random_sample(probability)
+    filter RandomSampleHandler.new(probability)
+  end
+
+  # @return [Transducer]
+  # @param [Object, Symbol] handler
+  #   Given an object that responds to `process`, uses it as the
+  #   handler.  Given a `Symbol`, builds a handler whose `process`
+  #   method will send `Symbol` to its argument.
+  # @param [Block] block <i>(optional)</i>
+  #   Given a `Block`, builds a handler whose `process` method will
+  #   call the block with its argument(s).
+  # Concats collections in the input, mapping over each one's
+  # elements.
+  def mapcat(handler=nil, &block)
+    compose(map(handler, &block), cat)
   end
 end
