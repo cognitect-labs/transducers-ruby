@@ -14,7 +14,7 @@
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 require 'transducers'
-require 'benchmark'
+require 'benchmark/ips'
 
 class Even
   def call(n) n.even? end
@@ -23,36 +23,31 @@ end
 e = 1.upto(1000)
 a = e.to_a
 
-times = 1000
-
 T = Transducers
 
-Benchmark.benchmark do |bm|
-  {"enum" => e, "array" => a}.each do |label, coll|
-    puts "filter with object (#{label})"
-    3.times do
-      bm.report do
-        times.times do
-          T.transduce(T.filter(Even.new), :<<, [], coll)
-        end
+Benchmark.ips do |bm|
+  { "enum" => e, "array" => a }.each do |label, coll|
+    bm.report("filter with object (#{label})") do |times|
+      i = 0
+      while i < times
+        T.transduce(T.filter(Even.new), :<<, [], coll)
+        i += 1
       end
     end
 
-    puts "filter with Symbol(#{label})"
-    3.times do
-      bm.report do
-        times.times do
-          T.transduce(T.filter(:even?), :<<, [], coll)
-        end
+    bm.report("filter with Symbol(#{label})") do |times|
+      i = 0
+      while i < times
+        T.transduce(T.filter(:even?), :<<, [], coll)
+        i += 1
       end
     end
 
-    puts "filter with block (#{label})"
-    3.times do
-      bm.report do
-        times.times do
-          T.transduce(T.filter {|n| n.even?}, :<<, [], coll)
-        end
+    bm.report("filter with block (#{label})") do |times|
+      i = 0
+      while i < times
+        T.transduce(T.filter { |n| n.even? }, :<<, [], coll)
+        i += 1
       end
     end
   end
