@@ -14,13 +14,12 @@
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 require 'transducers'
-require 'benchmark'
+require 'benchmark/ips'
 
 class Inc
   def call(n) n + 1 end
 end
 
-times = 100
 size  = 1000
 
 e = 1.upto(size)
@@ -28,32 +27,31 @@ a = e.to_a
 
 T = Transducers
 
-Benchmark.benchmark do |bm|
-  {"enum" => e, "array" => a}.each do |label, coll|
-    puts "map with object (#{label})"
-    3.times do
-      bm.report do
-        times.times do
-          T.transduce(T.map(Inc.new), :<<, [], coll)
-        end
+Benchmark.ips do |bm|
+  { "enum" => e, "array" => a }.each do |label, coll|
+    bm.report("map with object (#{label})") do |times|
+      i = 0
+      while i < times
+        T.transduce(T.map(Inc.new), :<<, [], coll)
+        i += 1
       end
     end
 
-    puts "map with Symbol(#{label})"
-    3.times do
-      bm.report do
-        times.times do
-          T.transduce(T.map(:succ), :<<, [], coll)
-        end
+
+    bm.report("map with Symbol(#{label})") do |times|
+      i = 0
+      while i < times
+        T.transduce(T.map(:succ), :<<, [], coll)
+        i += 1
       end
     end
 
-    puts "map with block (#{label})"
-    3.times do
-      bm.report do
-        times.times do
-          T.transduce(T.map {|n| n + 1}, :<<, [], coll)
-        end
+
+    bm.report("map with block (#{label})") do |times|
+      i = 0
+      while i < times
+        T.transduce(T.map { |n| n + 1 }, :<<, [], coll)
+        i += 1
       end
     end
   end
