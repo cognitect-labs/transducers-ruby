@@ -257,7 +257,7 @@ RSpec.describe Transducers do
     orig_expect do
       r = Class.new { def step(_,_) end }.new
       T.transduce(T.map(:succ), r, [1,2,3])
-    end.to raise_error
+    end.to raise_error(ArgumentError)
   end
 
   it "raises when it receives a symbol but no initial value" do
